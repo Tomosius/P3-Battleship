@@ -7,6 +7,8 @@ import copy  # For creating deep copies of data structures
 import os  # For clearing the terminal screen
 import time  # For time-related functionalities
 import re  # For handling user input expressions
+from difflib import SequenceMatcher
+from typing import List, Optional
 
 
 # Constants for map dimensions and default symbol
@@ -74,4 +76,22 @@ def clear_terminal():
 
 # User Input Processing Functions
 # -------------------------------
+
+
+def normalize_command(command: str) -> str:
+	"""
+	Normalize the command string for easier comparison.
+
+	This function tokenizes the command string, sorts the tokens,
+	and converts them to lowercase for case-insensitive comparison.
+
+	Parameters:
+		command (str): The command string to be normalized.
+
+	Returns:
+		str: The normalized command string.
+	"""
+	return ' '.join(sorted(command.lower().split()))
+
+
 
