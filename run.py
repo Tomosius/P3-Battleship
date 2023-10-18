@@ -94,4 +94,19 @@ def normalize_command(command: str) -> str:
 	return ' '.join(sorted(command.lower().split()))
 
 
+def levenshtein_ratio(a: str, b: str) -> float:
+	"""
+	Calculate the Levenshtein distance ratio between two strings.
+
+	The ratio is a measure of similarity between two strings.
+	A ratio of 1 means the strings are identical.
+
+	Parameters:
+		a (str): The first string for comparison.
+		b (str): The second string for comparison.
+
+	Returns:
+		float: The Levenshtein distance ratio between the two strings.
+	"""
+	return SequenceMatcher(None, a, b).ratio()
 
