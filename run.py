@@ -110,3 +110,47 @@ def levenshtein_ratio(a: str, b: str) -> float:
 	"""
 	return SequenceMatcher(None, a, b).ratio()
 
+def find_best_match(user_input: str, possible_commands: List[str]) -> Optional[str]:
+	"""
+	Find the best matching command based on user input and a list of possible commands.
+
+	This function first normalizes the user input and each possible command.
+	It then calculates the Levenshtein distance ratio between the normalized user input
+	and each possible command to find the best match.
+
+	Parameters:
+		user_input (str): The user's input string.
+		possible_commands (List[str]): A list of possible commands to match against.
+
+	Returns:
+		Optional[str]: The best-matching command, or None if no reasonable match is found.
+	"""
+	# Normalize the user input for comparison
+	user_input = normalize_command(user_input)
+
+	# Initialize variables to store the best match and its Levenshtein distance ratio
+	max_ratio = -1
+	best_match = None
+
+	# Loop through each possible command to find the best match
+	for command in possible_commands:
+		# Normalize the possible command for comparison
+		normalized_command = normalize_command(command)
+
+		# Calculate the Levenshtein distance ratio between the normalized user input and the possible command
+		ratio = levenshtein_ratio(user_input, normalized_command)
+
+		# Update the best match and its ratio if the current ratio is higher
+		if ratio > max_ratio:
+			max_ratio = ratio
+			best_match = command
+
+	# A threshold is set for the Levenshtein distance ratio to consider a match as reasonable
+	# This threshold can be adjusted as needed
+	if max_ratio > 0.6:
+		return best_match
+	else:
+		return None
+
+
+
