@@ -416,42 +416,6 @@ def print_map(map_game, row_labels, column_labels):
 
 
 
-def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int) -> (int, int):
-    """
-    Calculate the maximum map dimensions that can fit in the terminal.
-
-    Args:
-        map_height (int): Current map height.
-        map_width (int): Current map width.
-        gap (int): Gap between the two maps.
-
-    Returns:
-        tuple: (max_map_width, max_map_height)
-    """
-
-    # Get terminal size
-    terminal_size = shutil.get_terminal_size()
-    terminal_width = terminal_size.columns
-    terminal_height = terminal_size.lines
-
-    # Width of each map cell (including spaces)
-    cell_width = len("X") + 2  # "X" plus two spaces
-
-    # Number of characters needed for row labels
-    row_label_width = len(str(map_height - 1))
-
-    # Calculate max map width
-    max_map_width = math.floor(
-        (terminal_width - gap - 2 * (row_label_width + 3)) / (2 * cell_width)
-    )
-
-    # Calculate max map height
-    max_map_height = terminal_height - 3  # 1 row for column labels, 1 for separator, 1 for map label
-
-    return max_map_width, max_map_height
-
-
-
 
 
 def find_max_label_length(map_size: int, index_label: List[Union[int, str]]) -> int:
@@ -564,6 +528,48 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
                 num_digits_map_width + char_width - (char_width - width)),
                 end=" ")
         print()
+
+def calculate_max_map_dimensions(map_height: int, map_width: int, row_index_label,
+                                 column_index_label, gap: int) -> (int, int):
+    """
+    Calculate the maximum map dimensions that can fit in the terminal.
+
+    Args:
+        map_height (int): Current map height.
+        map_width (int): Current map width.
+        row_index_label: List of labels for row indexes.
+        column_index_label: List of labels for column indexes.
+        gap (int): Gap between the two maps.
+
+    Returns:
+        tuple: (max_map_width, max_map_height)
+    """
+
+    # Get terminal size
+    terminal_size = shutil.get_terminal_size()
+    terminal_width = terminal_size.columns
+    terminal_height = terminal_size.lines
+
+    # Width of each map cell (including spaces)
+    cell_width = len("X") + 2  # "X" plus two spaces
+
+    # Number of characters needed for row and column labels
+    row_label_width = find_max_label_length(map_height, row_index_label)
+    col_label_width = find_max_label_length(map_width, column_index_label)
+
+    # Calculate max map width
+    max_map_width = math.floor(
+        (terminal_width - gap - 2 * (row_label_width + 3)) / (2 * cell_width)
+    )
+
+    # Calculate max map height
+    max_map_height = terminal_height - 3  # 1 row for column labels, 1 for separator, 1 for map label
+
+    return max_map_width, max_map_height
+
+
+
+
 
 
 
