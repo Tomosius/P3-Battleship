@@ -1,5 +1,4 @@
-# battleship.py test.py - this code is for testing CPU vs CPU game
-
+# battleship.py test.py – this code is for testing CPU vs CPU game
 
 # Import required libraries
 import random  # For generating random numbers
@@ -54,9 +53,8 @@ commands_dictionary = {
                            'ship gaps'],
     'start game': ['begin game', 'launch game', 'game start'],
     'reset settings': ['default settings', 'clear settings', 'settings reset'],
-    'change coordinate labels': ['modify grid labels', 'edit coordinate '
-                                                       'names',
-                                 'labels change']
+    'change coordinate labels': ['modify grid labels',
+                                 'edit coordinate names', 'labels change']
 }
 
 
@@ -77,7 +75,6 @@ def clear_terminal():
 
 # User Input Processing Functions
 # -------------------------------
-
 
 def normalize_command(command: str) -> str:
     """
@@ -122,11 +119,15 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
     It then calculates the Levenshtein distance ratio between the normalized
     user input and each possible command to find the best match.
 
-    Parameters: user_input (str): The user's input string possible_commands
-    (List[str]): A list of possible commands to match against.
+    Parameters:
+        user_input (str): The user's input string
+        possible_commands (List[str]): A list of possible commands to match
+        against.
 
-    Returns: Optional[str]: The best-matching command, or None if no
-    reasonable match is found.
+    Returns:
+        Optional[str]:
+        The best-matching command, or:
+        None if no-reasonable match is found.
     """
     # Normalize the user input for comparison
     user_input = normalize_command(user_input)
@@ -168,19 +169,22 @@ class Ship:
         """
         Initialize a Ship object with its name and size.
 
-        Parameters: name (str): The name of the ship (e.g., "Destroyer").
-        Size (int): The size of the ship, representing how many cells it
-        occupies.
+        Parameters:
+            name (str): The name of the ship (for example,
+        "Destroyer").
+            size (int): The size of the ship, representing how
+        many cells it occupies.
 
-        Attributes: name (str): The name of the ship.
-        size (int): The size of the ship in cells.
-        cell_coordinates (List[Tuple[int, int]]): Coordinates (x, y) for
-        each cell of the ship.
-        hits (List[bool]): Tracks the hit status for each cell of the ship.
-        sunk (bool): Indicates whether the ship is sunk or not.
-        color (str): ANSI color code for the ship, based on its status.
-        orientation (str): Orientation of the ship ("Horizontal" or
-        "Vertical").
+        Attributes:
+            name (str): The name of the ship.
+            size (int): The size of the ship in cells.
+            cell_coordinates (List[Tuple[int, int]]): Coordinates (x, y) for
+            each cell of the ship.
+            hits (List[bool]): Tracks the hit status for each cell of the ship.
+            sunk (bool): Indicates whether the ship is sunk or not.
+            color (str): ANSI color code for the ship, based on its status.
+            orientation (str): Orientation of the ship ("Horizontal" or
+            "Vertical").
         """
         self.name = name
         self.size = size
@@ -207,8 +211,8 @@ class Ship:
         Retrieve the coordinates of all cells in the ship.
 
         Returns:
-        List[Tuple[int, int]]:
-        A list of (x, y) tuples representing the coordinates for each cell.
+            List[Tuple[int, int]]: A list of (x, y) tuples representing the
+            coordinates for each cell.
         """
         return self.cell_coordinates
 
@@ -217,8 +221,9 @@ class Ship:
         Set the alignment of the ship and update its color based on the
         orientation.
 
-        Parameters: orientation (str): The orientation of the ship, either
-        "Horizontal" or "Vertical".
+        Parameters:
+            orientation (str): The orientation of the ship, either
+            "Horizontal" or "Vertical".
         """
         self.orientation = orientation
         if orientation == "Horizontal":
@@ -247,17 +252,21 @@ class Ship:
         """
         Get the symbol for a ship cell based on its hit status and orientation.
 
-        Parameters: position (int): The position of the cell within the
-        ship, used to determine the appropriate symbol for that cell.
+        Parameters:
+            position (int): The position of the cell within the
+            ship, used to determine the appropriate symbol for that cell.
 
-        Returns: str: The symbol for the cell, colored based on the ship's
-        current status.
+        Returns:
+            str: The symbol for the cell, colored based on the ship's
+            current status.
 
         This function performs the following key tasks:
-        1. Check if the ship is sunk.
+        1. Check if the ship
+        is sunk.
         2. Determines the appropriate symbol for the ship based on
         its size and orientation.
-        3. Colors the symbol based on the ship's status (e.g., red if sunk).
+        3. Colors the symbol based on the ship's
+        status (for example, red if sunk).
 
         Note: The color of the symbol will be red if the ship is sunk or if
         the cell at the given `position` is hit.
@@ -289,8 +298,10 @@ class Fleet:
         Initialize an empty Fleet object, designed to manage multiple ships
         in a game.
 
-        Attributes: ships (List[Ship]): A list to store the Ship objects
-        that belong to this fleet.
+        Attributes:
+            ships (List[Ship]): A list to store the Ship objects
+            that belong to this fleet.
+
         Starts empty.
         """
         self.ships: List[Ship] = []
@@ -300,11 +311,13 @@ class Fleet:
         Add a Ship object to the fleet, expanding the fleet's capabilities
         and size.
 
-        Parameters: ship (Ship): The Ship object to be added to the fleet,
-        containing details like name, size, etc.
+        Parameters:
+            ship (Ship): The Ship object to be added to the fleet,
+            containing details like name, size, etc.
 
-        Note: This function modifies the internal 'ships' list by appending
-        the new Ship object to it.
+        Note:
+            This function modifies the internal 'ships' list by appending
+            the new Ship object to it.
         """
         self.ships.append(ship)
 
@@ -313,13 +326,36 @@ class Fleet:
         Retrieve a Ship object from the fleet by its name, allowing for
         individual ship manipulation.
 
-        Parameters: name (str): The name of the ship to retrieve,
-        as specified during the Ship object creation.
+        Parameters:
+            name (str): The name of the ship to retrieve, as specified
+            during the Ship object creation.
 
-        Returns: Ship or None: Returns the Ship object if found within the
-        fleet; returns None if not found.
+        Returns:
+            Ship or None: Returns the Ship object if found within the fleet;
+            returns None if not found.
         """
         for ship in self.ships:
             if ship.name == name:
                 return ship
         return None
+
+
+def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
+    """
+    Initialize a 2D map with a default symbol.
+
+    Parameters:
+        height (int): The height of the map in cells.
+        width (int): The width of the map in cells.
+        symbol (str): The default symbol to fill each cell of the map with.
+
+    Returns:
+        List[List[str]]: A 2D list (map) where each cell is initialized
+        with the given symbol.
+
+    This function performs two key tasks: 1. Creates a 2D list (map) with
+    dimensions specified by `height` and `width`. 2. Fill each cell in the
+    2D list with the default `symbol`.
+    """
+
+    return [[symbol for _ in range(height)] for _ in range(width)]
