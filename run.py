@@ -359,3 +359,47 @@ def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
     """
 
     return [[symbol for _ in range(height)] for _ in range(width)]
+
+
+def print_map(map_game, row_labels, column_labels):
+    """
+    Print the game map in a human-readable format.
+
+    Args:
+        map_game (list): A 2D list representing the game map,
+                         where each cell contains the status of a ship or water.
+        row_labels (list): A list of labels for the rows.
+        column_labels (list): A list of labels for the columns.
+
+    Output:
+        The function will print the game map to the console.
+    """
+
+    # Validate input arguments
+    try:
+        assert len(row_labels) == len(map_game[0]), "Row labels must match the number of columns in the map."
+        assert len(column_labels) == len(map_game), "Column labels must match the number of rows in the map."
+    except AssertionError as e:
+        print(f"Error: {e}")
+        return
+
+    # Print column headers (e.g., A, B, C, ..., Z)
+    print("   ", end="")
+    for col_label in row_labels:
+        print(f"{col_label}  ", end="")
+
+    # Print a separator line between headers and table
+    print("\n   " + "=" * (len(row_labels) * 3))
+
+    # Loop through each row
+    for row_index, row in enumerate(map_game):
+        # Print row header (e.g., 1, 2, 3, ..., N)
+        print(f"{column_labels[row_index]} |", end=" ")
+
+        # Loop through each cell in the row
+        for cell_value in row:
+            print(f"{cell_value}  ", end="")
+
+        # Move to the next line at the end of each row
+        print()
+
