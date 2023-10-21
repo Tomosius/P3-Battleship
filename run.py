@@ -9,7 +9,9 @@ import re  # For handling user input expressions
 from difflib import SequenceMatcher
 from typing import List, Optional, Union, Dict, Tuple
 from icecream import ic
-from math import floor
+import math
+import shutil
+
 
 # Constants for map dimensions and default symbol
 DEFAULT_MAP_HEIGHT = 10
@@ -368,10 +370,12 @@ def print_map(map_game, row_labels, column_labels):
     """
     Print the game map in a human-readable format.
 
-    Args: map_game (list): A 2D list representing the game map, where each
-    cell contains the status of a ship or water. row_labels (list): A list
-    of labels for the rows. column_labels (list): A list of labels for the
-    columns.
+    Args:
+        map_game (list): A 2D list representing the game map, where each
+            cell contains the status of a ship or water.
+        row_labels (list): A list of labels for the rows.
+        column_labels (list): A list of labels for the
+            columns.
 
     Output:
         The function will print the game map to the console.
@@ -379,9 +383,9 @@ def print_map(map_game, row_labels, column_labels):
 
     # Validate input arguments
     try:
-        assert len(row_labels) == len(map_game[0]),\
+        assert len(row_labels) == len(map_game[0]), \
             "Row labels must match the number of columns in the map."
-        assert len(column_labels) == len(map_game),\
+        assert len(column_labels) == len(map_game), \
             "Column labels must match the number of rows in the map."
     except AssertionError as e:
         print(f"Error: {e}")
@@ -408,13 +412,11 @@ def print_map(map_game, row_labels, column_labels):
         print()
 
 
-
-from typing import List
-
 def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
-                   label_left: str, label_right: str, gap: int = 10 ) -> None:
+                   label_left: str, label_right: str, gap: int = 10) -> None:
     """
-    Print two 2D maps side-by-side with dynamically centered labels and a customizable gap.
+    Print two 2D maps side-by-side with dynamically centered labels and a
+    customizable gap.
 
     Args:
         map_left: A 2D list representing the first map.
@@ -427,19 +429,21 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
     # Constants for character dimensions and formatting
     char_width = len("X")
 
-    # Calculate the maximum number of digits in row and column indices
+    # Calculate the maximum number of digits in row and column indexes
     num_digits_map_width = len(str(len(map_left[0]) - 1))
     num_digits_map_height = len(str(len(map_left) - 1))
 
     # Create a string of blank spaces for the gap between maps
     gap_str = ' ' * gap
 
-    # Calculate the left-side offset for aligning map and row indices
+    # Calculate the left-side offset for aligning map and row indexes
     row_index_separator = " | "
-    print_map_left_offset = " " * (num_digits_map_height + len(row_index_separator))
+    print_map_left_offset = " " * (
+            num_digits_map_height + len(row_index_separator))
 
     # Center-align the labels for both maps
-    number_char_table_total = len(map_left[0]) * (num_digits_map_width + char_width + 1)
+    number_char_table_total = len(map_left[0]) * (
+            num_digits_map_width + char_width + 1)
     label_left_centered = label_left.center(number_char_table_total)
     label_right_centered = label_right.center(number_char_table_total)
 
@@ -457,53 +461,39 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
     print()
 
     # Print the horizontal separator line
-    separator_length_left = len(map_left[0]) * (num_digits_map_width + char_width + 1)
-    separator_length_right = len(map_right[0]) * (num_digits_map_width + char_width + 1)
+    separator_length_left = len(map_left[0]) * (
+            num_digits_map_width + char_width + 1)
+    separator_length_right = len(map_right[0]) * (
+            num_digits_map_width + char_width + 1)
     print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
     print(" " + print_map_left_offset + "=" * separator_length_right)
 
     # Loop through each row to print map values
-    for row_index, (row_left, row_right) in enumerate(zip(map_left, map_right)):
-        print(str(row_index).rjust(num_digits_map_height + 1), end=row_index_separator)
+    for row_index, (row_left, row_right) in enumerate(
+            zip(map_left, map_right)):
+        print(str(row_index).rjust(num_digits_map_height + 1),
+              end=row_index_separator)
         for value in row_left:
             width = len(str(value))
-            print(str(value).rjust(num_digits_map_width + char_width - (char_width - width)), end=" ")
+            print(str(value).rjust(
+                num_digits_map_width + char_width - (char_width - width)),
+                end=" ")
         print(gap_str, end="")
-        print(str(row_index).rjust(num_digits_map_height + 1), end=row_index_separator)
+        print(str(row_index).rjust(num_digits_map_height + 1),
+              end=row_index_separator)
         for value in row_right:
             width = len(str(value))
-            print(str(value).rjust(num_digits_map_width + char_width - (char_width - width)), end=" ")
+            print(str(value).rjust(
+                num_digits_map_width + char_width - (char_width - width)),
+                end=" ")
         print()
 
 
-def calculate_max_map_dimensions(map_height: int, map_width: int,
-                                 terminal_height: int, terminal_width: int,
-                                 gap: int) -> (int, int):
-    """
-    Calculate the maximum map dimensions that can fit in the terminal.
 
-    Args:
-        map_height (int): Current map height.
-        map_width (int): Current map width.
-        terminal_height (int): Terminal height in rows.
-        terminal_width (int): Terminal width in columns.
-        gap (int): Gap between the two maps.
 
-    Returns:
-        tuple: (max_map_width, max_map_height)
-    """
 
-    # Width of each map cell (including spaces)
-    cell_width = len("X") + 2  # "X" plus two spaces
 
-    # Number of characters needed for row labels
-    row_label_width = len(str(map_height - 1))
 
-    # Calculate max map width
-    max_map_width = floor((terminal_width - gap - 2 * (row_label_width + 3)) / (2 * cell_width))
 
-    # Calculate max map height
-    max_map_height = terminal_height - 3  # 1 row for column labels, 1 for separator, 1 for map label
-
-    return max_map_width, max_map_height
-
+player_map = create_map(16, 10, DEFAULT_SYMBOL)
+print_two_maps(player_map, player_map, "jonas", "petras", 10)
