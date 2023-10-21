@@ -202,7 +202,6 @@ class Ship:
         """
         self.cell_coordinates = coordinates
 
-
     def get_all_coordinates(self) -> List[Tuple[int, int]]:
         """
         Retrieve the coordinates of all cells in the ship.
@@ -224,7 +223,7 @@ class Ship:
         self.orientation = orientation
         if orientation == "Horizontal":
             self.color = DEFAULT_COLORS["DarkBlue"]
-        elif orientation == "Vertal":
+        elif orientation == "Vertical":
             self.color = DEFAULT_COLORS["DarkGreen"]
         else:
             self.color = DEFAULT_COLORS["DarkYellow"]
@@ -244,42 +243,83 @@ class Ship:
         self.sunk = True
         self.color = DEFAULT_COLORS["DarkRed"]
 
-
     def get_symbol(self, position: int) -> str:
         """
         Get the symbol for a ship cell based on its hit status and orientation.
 
-        Parameters:
-            position (int): The position of the cell within the ship, used to determine
-            the appropriate symbol for that cell.
+        Parameters: position (int): The position of the cell within the
+        ship, used to determine the appropriate symbol for that cell.
 
-        Returns:
-            str: The symbol for the cell, colored based on the ship's current status.
+        Returns: str: The symbol for the cell, colored based on the ship's
+        current status.
 
         This function performs the following key tasks:
-        1. Checks if the ship is sunk.
-        2. Determines the appropriate symbol for the ship based on its size and orientation.
+        1. Check if the ship is sunk.
+        2. Determines the appropriate symbol for the ship based on
+        its size and orientation.
         3. Colors the symbol based on the ship's status (e.g., red if sunk).
 
-        Note: The color of the symbol will be red if the ship is sunk or if the cell at
-        the given `position` is hit.
-            """
+        Note: The color of the symbol will be red if the ship is sunk or if
+        the cell at the given `position` is hit.
+        """
         # Determine the color based on sunk status
         if self.sunk:
             color = DEFAULT_COLORS["DarkRed"]
         else:
             color = self.color
 
-        # Determine the symbol key based on the size and orientation of the ship
+        # Determine the symbol key based on the size and orientation of the
+        # ship
         symbol_key = self.orientation
 
-        # Choose the appropriate symbol for the cell based on its position in the ship
+        # Choose the appropriate symbol for the cell based on its position
+        # in the ship
         symbol = SHIP_SYMBOLS[symbol_key][0 if position == 0 else 1]
 
         # Return the colored symbol
         return color + symbol + DEFAULT_COLORS["Reset"]
 
 
+class Fleet:
+    """Manages a collection of Ship objects, encapsulating them in a fleet
+    for the Battleship game."""
 
+    def __init__(self) -> None:
+        """
+        Initialize an empty Fleet object, designed to manage multiple ships
+        in a game.
 
+        Attributes: ships (List[Ship]): A list to store the Ship objects
+        that belong to this fleet.
+        Starts empty.
+        """
+        self.ships: List[Ship] = []
 
+    def add_ship(self, ship: Ship) -> None:
+        """
+        Add a Ship object to the fleet, expanding the fleet's capabilities
+        and size.
+
+        Parameters: ship (Ship): The Ship object to be added to the fleet,
+        containing details like name, size, etc.
+
+        Note: This function modifies the internal 'ships' list by appending
+        the new Ship object to it.
+        """
+        self.ships.append(ship)
+
+    def get_ship(self, name: str) -> Union[Ship, None]:
+        """
+        Retrieve a Ship object from the fleet by its name, allowing for
+        individual ship manipulation.
+
+        Parameters: name (str): The name of the ship to retrieve,
+        as specified during the Ship object creation.
+
+        Returns: Ship or None: Returns the Ship object if found within the
+        fleet; returns None if not found.
+        """
+        for ship in self.ships:
+            if ship.name == name:
+                return ship
+        return None
