@@ -8,7 +8,7 @@ import time  # For time-related functionalities
 import re  # For handling user input expressions
 from difflib import SequenceMatcher
 from typing import List, Optional, Union, Dict, Tuple
-from icecream import ic
+import icecream
 import math
 import shutil
 
@@ -18,10 +18,13 @@ DEFAULT_MAP_HEIGHT = 10
 DEFAULT_MAP_WIDTH = 10
 DEFAULT_SYMBOL = '?'  # Symbol representing an empty cell in the map
 DEFAULT_GAPS_BETWEEN_MAPS = True
+
 DEFAULT_MAP_ROW_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                            15, 16, 17, 18, 19]
 DEFAULT_MAP_COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                               15, 16, 17, 18, 19]
+
+
 
 # ANSI color codes used for visual representation of different ship statuses
 DEFAULT_COLORS: Dict[str, str] = {
@@ -412,82 +415,6 @@ def print_map(map_game, row_labels, column_labels):
         print()
 
 
-def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
-                   label_left: str, label_right: str, gap: int = 10) -> None:
-    """
-    Print two 2D maps side-by-side with dynamically centered labels and a
-    customizable gap.
-
-    Args:
-        map_left: A 2D list representing the first map.
-        map_right: A 2D list representing the second map.
-        label_left: Label for the first map.
-        label_right: Label for the second map.
-        gap: Number of blank spaces between the two maps. Default is 10.
-    """
-
-    # Constants for character dimensions and formatting
-    char_width = len("X")
-
-    # Calculate the maximum number of digits in row and column indexes
-    num_digits_map_width = len(str(len(map_left[0]) - 1))
-    num_digits_map_height = len(str(len(map_left) - 1))
-
-    # Create a string of blank spaces for the gap between maps
-    gap_str = ' ' * gap
-
-    # Calculate the left-side offset for aligning map and row indexes
-    row_index_separator = " | "
-    print_map_left_offset = " " * (
-            num_digits_map_height + len(row_index_separator))
-
-    # Center-align the labels for both maps
-    number_char_table_total = len(map_left[0]) * (
-            num_digits_map_width + char_width + 1)
-    label_left_centered = label_left.center(number_char_table_total)
-    label_right_centered = label_right.center(number_char_table_total)
-
-    # Print the centered labels for both maps
-    print(f"{print_map_left_offset}{label_left_centered}{gap_str}"
-          f"{print_map_left_offset}{label_right_centered}")
-
-    # Print column headers for both maps
-    print(print_map_left_offset, end=" ")
-    for col_index in range(len(map_left[0])):
-        print(str(col_index).rjust(num_digits_map_width + char_width), end=" ")
-    print(gap_str, print_map_left_offset, end="")
-    for col_index in range(len(map_right[0])):
-        print(str(col_index).rjust(num_digits_map_width + char_width), end=" ")
-    print()
-
-    # Print the horizontal separator line
-    separator_length_left = len(map_left[0]) * (
-            num_digits_map_width + char_width + 1)
-    separator_length_right = len(map_right[0]) * (
-            num_digits_map_width + char_width + 1)
-    print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
-    print(" " + print_map_left_offset + "=" * separator_length_right)
-
-    # Loop through each row to print map values
-    for row_index, (row_left, row_right) in enumerate(
-            zip(map_left, map_right)):
-        print(str(row_index).rjust(num_digits_map_height + 1),
-              end=row_index_separator)
-        for value in row_left:
-            width = len(str(value))
-            print(str(value).rjust(
-                num_digits_map_width + char_width - (char_width - width)),
-                end=" ")
-        print(gap_str, end="")
-        print(str(row_index).rjust(num_digits_map_height + 1),
-              end=row_index_separator)
-        for value in row_right:
-            width = len(str(value))
-            print(str(value).rjust(
-                num_digits_map_width + char_width - (char_width - width)),
-                end=" ")
-        print()
-
 
 def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int) -> (int, int):
     """
@@ -527,5 +454,121 @@ def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int) -> (
 
 
 
-player_map = create_map(16, 10, DEFAULT_SYMBOL)
-print_two_maps(player_map, player_map, "jonas", "petras", 10)
+def find_max_label_length(map_size: int, index_label: List[Union[int, str]]) -> int:
+    """
+    Find the maximum length of index labels for a given map size.
+
+    Args:
+        map_size: The size of the map (either height or width).
+        index_label: List of labels for row or column indexes.
+
+    Returns:
+        int: Maximum length of the index labels for the given map size.
+    """
+
+    # Initialize max_length to 0
+    max_length = 0
+
+    # Loop through the index_label list up to map_size to find the maximum label length
+    for i in range(map_size):
+        label_length = len(str(index_label[i]))
+
+        # Update max_length if the current label is longer
+        if label_length > max_length:
+            max_length = label_length
+
+    return max_length
+
+
+
+
+def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
+                   label_left: str, label_right: str, row_index_label,
+                   column_index_label, gap: int = 10) -> None:
+    """
+    Print two 2D maps side-by-side with dynamically centered labels and a
+    customizable gap.
+
+    Args:
+        map_left : A 2D list representing the first map.
+        map_right: A 2D list representing the second map.
+        label_left: Label for the first map.
+        label_right: Label for the second map.
+        row_index_label: Label indicating row index of the map
+        column_index_label: Label indicating column index of the map
+
+        gap: Number of blank spaces between the two maps. Default is 10.
+    """
+
+    # Constants for character dimensions and formatting
+    char_width = len("X")
+
+    # Calculate the maximum number of digits in row and column indexes
+    num_digits_map_width = find_max_label_length(len(map_left[0]),
+                                                 column_index_label)
+    num_digits_map_height = find_max_label_length(len(map_left),
+                                                  row_index_label)
+
+    # Create a string of blank spaces for the gap between maps
+    gap_str = ' ' * gap
+
+    # Calculate the left-side offset for aligning map and row indexes
+    row_index_separator = " | "
+    print_map_left_offset = " " * (
+            num_digits_map_height + len(row_index_separator))
+
+    # Center-align the labels for both maps
+    number_char_table_total = len(map_left[0]) * (
+            num_digits_map_width + char_width + 1)
+    label_left_centered = label_left.center(number_char_table_total)
+    label_right_centered = label_right.center(number_char_table_total)
+
+    # Print the centered labels for both maps
+    print(f"{print_map_left_offset}{label_left_centered}{gap_str}"
+          f"{print_map_left_offset}{label_right_centered}")
+
+    # Print column headers for both maps
+    print(print_map_left_offset, end=" ")
+    for col_index in range(len(map_left[0])):
+        print(str(column_index_label[col_index]).rjust(num_digits_map_width +
+                                                       char_width), end=" ")
+    print(gap_str, print_map_left_offset, end="")
+    for col_index in range(len(map_right[0])):
+        print(str(column_index_label[col_index]).rjust(num_digits_map_width + char_width), end=" ")
+    print()
+
+    # Print the horizontal separator line
+    separator_length_left = len(map_left[0]) * (
+            num_digits_map_width + char_width + 1)
+    separator_length_right = len(map_right[0]) * (
+            num_digits_map_width + char_width + 1)
+    print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
+    print(" " + print_map_left_offset + "=" * separator_length_right)
+
+    # Loop through each row to print map values
+    for row_index, (row_left, row_right) in enumerate(
+            zip(map_left, map_right)):
+        print(str(row_index_label[row_index]).rjust(num_digits_map_height + 1),
+              end=row_index_separator)
+        for value in row_left:
+            width = len(str(value))
+            print(str(value).rjust(
+                num_digits_map_width + char_width - (char_width - width)),
+                end=" ")
+        print(gap_str, end="")
+        print(str(row_index_label[row_index]).rjust(num_digits_map_height + 1),
+              end=row_index_separator)
+        for value in row_right:
+            width = len(str(value))
+            print(str(value).rjust(
+                num_digits_map_width + char_width - (char_width - width)),
+                end=" ")
+        print()
+
+
+
+
+player_map = create_map(16, 13, DEFAULT_SYMBOL)
+print_two_maps(player_map, player_map, "jonas", "petras",
+               DEFAULT_MAP_ROW_INDEXES, DEFAULT_MAP_COLUMN_INDEXES, 10)
+
