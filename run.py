@@ -12,7 +12,6 @@ import icecream
 import math
 import shutil
 
-
 # Constants for map dimensions and default symbol
 DEFAULT_MAP_HEIGHT = 10
 DEFAULT_MAP_WIDTH = 10
@@ -23,8 +22,6 @@ DEFAULT_MAP_ROW_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                            15, 16, 17, 18, 19]
 DEFAULT_MAP_COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                               15, 16, 17, 18, 19]
-
-
 
 # ANSI color codes used for visual representation of different ship statuses
 DEFAULT_COLORS: Dict[str, str] = {
@@ -84,7 +81,7 @@ def clear_terminal():
 # User Input Processing Functions
 # -------------------------------
 
-def normalize_command(command: str) -> str:
+def normalize_string(text_input: str) -> str:
     """
     Normalize the command string for easier comparison.
 
@@ -92,12 +89,12 @@ def normalize_command(command: str) -> str:
     and converts them to lowercase for case-insensitive comparison.
 
     Parameters:
-        command (str): The command string to be normalized.
+        text_input (str): The command string to be normalized.
 
     Returns:
         str: The normalized command string.
     """
-    return ' '.join(sorted(command.lower().split()))
+    return ' '.join(sorted(text_input.lower().split()))
 
 
 def levenshtein_ratio(first_string: str, second_string: str) -> float:
@@ -138,7 +135,7 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
         None if no-reasonable match is found.
     """
     # Normalize the user input for comparison
-    user_input = normalize_command(user_input)
+    user_input = normalize_string(user_input)
 
     # Initialize variables to store the best match and its Levenshtein
     # distance ratio
@@ -148,7 +145,7 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
     # Loop through each possible command to find the best match
     for command in possible_commands:
         # Normalize the possible command for comparison
-        normalized_command = normalize_command(command)
+        normalized_command = normalize_string(command)
 
         # Calculate the Levenshtein distance ratio between the normalized
         # user input and the possible command
@@ -415,10 +412,8 @@ def print_map(map_game, row_labels, column_labels):
         print()
 
 
-
-
-
-def find_max_label_length(map_size: int, index_label: List[Union[int, str]]) -> int:
+def find_max_label_length(map_size: int,
+                          index_label: List[Union[int, str]]) -> int:
     """
     Find the maximum length of index labels for a given map size.
 
@@ -433,7 +428,8 @@ def find_max_label_length(map_size: int, index_label: List[Union[int, str]]) -> 
     # Initialize max_length to 0
     max_length = 0
 
-    # Loop through the index_label list up to map_size to find the maximum label length
+    # Loop through the index_label list up to map_size to find the maximum
+    # label length
     for i in range(map_size):
         label_length = len(str(index_label[i]))
 
@@ -442,8 +438,6 @@ def find_max_label_length(map_size: int, index_label: List[Union[int, str]]) -> 
             max_length = label_length
 
     return max_length
-
-
 
 
 def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
@@ -498,7 +492,8 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
                                                        char_width), end=" ")
     print(gap_str, print_map_left_offset, end="")
     for col_index in range(len(map_right[0])):
-        print(str(column_index_label[col_index]).rjust(num_digits_map_width + char_width), end=" ")
+        print(str(column_index_label[col_index]).rjust(
+            num_digits_map_width + char_width), end=" ")
     print()
 
     # Print the horizontal separator line
@@ -529,26 +524,31 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
                 end=" ")
         print()
 
-def calculate_max_map_dimensions(map_height: int, map_width: int, row_index_label,
-                                 column_index_label, gap: int) -> (int, int):
+
+# Corrected function to include map_width and map_height in calculations
+def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int,
+                                 row_index_label: List[Union[int, str]],
+                                 column_index_label: List[
+                                     Union[int, str]]) -> (int, int):
     """
     Calculate the maximum map dimensions that can fit in the terminal.
 
     Args:
         map_height (int): Current map height.
         map_width (int): Current map width.
-        row_index_label: List of labels for row indexes.
-        column_index_label: List of labels for column indexes.
         gap (int): Gap between the two maps.
+        row_index_label (List[Union[int, str]]): Labels for the row indexes.
+        column_index_label (List[Union[int, str]]): Labels for the column
+        indexes.
 
     Returns:
         tuple: (max_map_width, max_map_height)
     """
 
-    # Get terminal size
-    terminal_size = shutil.get_terminal_size()
-    terminal_width = terminal_size.columns
-    terminal_height = terminal_size.lines
+    # Simulated terminal dimensions;
+    # normally you would use shutil.get_terminal_size()
+    terminal_size = (100, 30)  # (columns, lines)
+    terminal_width, terminal_height = terminal_size
 
     # Width of each map cell (including spaces)
     cell_width = len("X") + 2  # "X" plus two spaces
@@ -558,23 +558,16 @@ def calculate_max_map_dimensions(map_height: int, map_width: int, row_index_labe
     col_label_width = find_max_label_length(map_width, column_index_label)
 
     # Calculate max map width
-    max_map_width = math.floor(
-        (terminal_width - gap - 2 * (row_label_width + 3)) / (2 * cell_width)
-    )
+    max_map_width = (terminal_width - gap - 2 * (row_label_width + 3)) // (
+            2 * (col_label_width + cell_width))
 
     # Calculate max map height
-    max_map_height = terminal_height - 3  # 1 row for column labels, 1 for separator, 1 for map label
+    max_map_height = terminal_height - 3  # 1 row for column labels, 1 for
+    # separator, 1 for map label
 
     return max_map_width, max_map_height
-
-
-
-
-
-
 
 
 player_map = create_map(16, 13, DEFAULT_SYMBOL)
 print_two_maps(player_map, player_map, "jonas", "petras",
                DEFAULT_MAP_ROW_INDEXES, DEFAULT_MAP_COLUMN_INDEXES, 10)
-
