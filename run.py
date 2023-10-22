@@ -8,7 +8,7 @@ import time  # For time-related functionalities
 import re  # For handling user input expressions
 from difflib import SequenceMatcher
 from typing import List, Optional, Union, Dict, Tuple
-import icecream
+from icecream import ic
 import math
 import shutil
 
@@ -188,7 +188,7 @@ class Ship:
                 each cell of the ship.
             sunk (bool): Indicates whether the ship is sunk or not.
             color (str): ANSI color code for the ship, based on its status.
-            orientation (str): Orientation of the ship ("Horizontal" or
+            alignment (str): alignment of the ship ("Horizontal" or
                 "Vertical").
         """
         self.name = name
@@ -196,21 +196,23 @@ class Ship:
         self.cell_coordinates = []
         self.sunk = False
         self.color = None
-        self.orientation = None
+        self.alignment = None
         self.deployed = False
 
-        # Setting initial color and orientation based on ship size
+        # Setting initial color and alignment based on ship size
         if self.size == 1:
-            self.orientation = "Single"
-            self.color = "DarkYellow"
+            self.alignment = "Single"
+            self.color = DEFAULT_COLORS["DarkYellow"]
 
-    def set_cell_coordinates(self, coordinates: List[Tuple[int, int]]) -> None:
+    def set_cell_coordinates(self, coordinates) -> None:
         """
         Set the coordinates for each cell of the ship.
 
-        Parameters: coordinates (List[Tuple[int, int]]): A list of (x,
+        Parameters: coordinates (List[List[int, int]]): A list of (x,
             y) tuples representing the coordinates for each cell.
         """
+        print("kkk")
+        ic(coordinates)
         self.cell_coordinates = coordinates
 
     def get_coordinates_by_single_coordinate(
@@ -238,19 +240,19 @@ class Ship:
             coordinates_list = self.cell_coordinates
         return coordinates_list
 
-    def set_alignment(self, orientation: str) -> None:
+    def set_alignment(self, alignment: str) -> None:
         """
         Set the alignment of the ship and update its color based on the
-        orientation.
+        alignment.
 
         Parameters:
-            orientation (str): The orientation of the ship, either
+            alignment (str): The alignment of the ship, either
             "Horizontal" or "Vertical".
         """
-        self.orientation = orientation
-        if orientation == "Horizontal":
+        self.alignment = alignment
+        if alignment == "Horizontal":
             self.color = DEFAULT_COLORS["DarkBlue"]
-        elif orientation == "Vertical":
+        elif alignment == "Vertical":
             self.color = DEFAULT_COLORS["DarkGreen"]
 
     def set_sunk(self) -> None:
@@ -270,42 +272,54 @@ class Ship:
 
     def get_symbols(self) -> List[str]:
         """
-        Get symbols for all ship cells based on its hit status and orientation.
+        Get symbols for all ship cells based on its hit status and alignment.
 
         Returns:
             List[str]: A list of symbols for all cells of the ship,
                 colored based on the ship's current status.
 
         This function performs the following key tasks:
-            1. Check if the ship
-                is sunk.
-            2. Determine the appropriate symbol for the ship based on
-                its size and orientation.
-            3. Color the symbols based on the ship's
-                status (for example, red if sunk).
+            1. Determine the color based on whether the ship is sunk or not.
+            2. Handle the case where the color or symbols are not defined.
+            3. Determine the appropriate symbol for each cell of the ship
+            based on its size and alignment.
+            4. Generate a list of colored symbols.
 
         Note:
-            The color of each symbol will be red if the ship is sunk or if
-                the cell is hit.
+            The color of each symbol will be red if the ship is sunk.
+            Warnings will be printed to the console if the color or symbols
+            are not defined.
         """
+
         # Determine the color based on sunk status
-        if self.sunk:
-            color = DEFAULT_COLORS["DarkRed"]
-        else:
-            color = self.color
+        color = DEFAULT_COLORS.get("DarkRed") if self.sunk else self.color
 
-        # Determine the symbol key based on the size and orientation of the
-        # ship
-        symbol_key = self.orientation
+        # Handle the case where color is None
+        if color is None:
+            print("Warning: color is None. Using default.")
+            color = DEFAULT_COLORS.get("Default", "default_fallback_color")
 
-        # Get the list of symbols for the ship based on its size and
-        # orientation
-        symbols = SHIP_SYMBOLS[symbol_key]
+        # Determine the symbol key based on the size and alignment of the ship
+        symbol_key = self.alignment
 
-        # Color each symbol based on the ship's status
-        colored_symbols = [color + symbol + DEFAULT_COLORS["Reset"] for
-                           symbol in symbols]
+        # Get the list of symbols for the ship based on its size and alignment
+        symbols = SHIP_SYMBOLS.get(symbol_key, ["default_symbol"])
 
+        # Handle the case where symbols is None or empty
+        if not symbols:
+            print("Warning: symbols list is empty. Using default.")
+            symbols = ["default_symbol"]
+
+        # Initialize colored_symbols as an empty list
+        colored_symbols = []
+
+        # Generate colored symbols based on ship size and status
+        for i in range(self.size):
+            # Choose the appropriate symbol based on position
+            symbol = symbols[0] if i == 0 else symbols[1]
+
+            # Color the symbol and append to the list
+            colored_symbols.append(color + symbol + DEFAULT_COLORS["Reset"])
         return colored_symbols
 
 
@@ -346,19 +360,23 @@ class Fleet:
                 return True
         return False
 
-    def get_ship(self, name: str) -> Union[Ship, None]:
+    def get_ship(self, name: str, is_deployed: bool = False) -> Union[Ship,
+    None]:
         """
-        Retrieve a Ship object from the fleet by its name.
+        Retrieve a Ship object from the fleet by its name and deployment
+        status.
 
         Parameters:
             name (str): The name of the ship to retrieve.
+            is_deployed (bool): Whether to retrieve a deployed or undeployed
+                ship. Defaults to False, which retrieves undeployed ships.
 
         Returns:
             Ship or None: Returns the Ship object if found; returns None if
-                not found.
+            not found.
         """
         for ship in self.ships:
-            if ship.name == name:
+            if ship.name == name and ship.deployed == is_deployed:
                 return ship
         return None
 
@@ -417,6 +435,44 @@ class Fleet:
             if ship.name == name and ship.deployed == is_deployed:
                 count += 1
         return count
+
+    def get_biggest_ship_by_deployed_status(self, is_deployed: bool = False) \
+            -> Union[str, int, None]:
+        """
+        Get the name and size of the biggest ship in the fleet based on the
+        deployed status.
+
+        Parameters:
+            is_deployed (bool, optional): Whether to consider deployed ships.
+                Default is False, which considers not-deployed ships.
+
+        Returns:
+            Union[str, int, None]: Returns a tuple containing the name and size
+                of the biggest deployed ship if found; returns None if no
+                deployed ships are found.
+
+        This function iterates through the ships in the fleet, considering only
+        the deployed or not-deployed ships based on the `is_deployed`
+        parameter.
+        It calculates the size of each ship and keeps track of the biggest one.
+        If a deployed ship is found, it returns a tuple containing the name and
+        size of that ship; otherwise, it returns None.
+        """
+        biggest_ship = None
+        biggest_size = 0
+
+        for ship in self.ships:
+            # Check if the ship matches the deployed status
+            if ship.deployed == is_deployed:
+                # If the ship is bigger than the current biggest, update it
+                if ship.size > biggest_size:
+                    biggest_ship = ship
+                    biggest_size = biggest_ship.size
+
+        if biggest_ship:
+            return biggest_ship
+        else:
+            return None
 
     def __str__(self) -> str:
         """
@@ -479,7 +535,8 @@ def create_default_fleet() -> Fleet:
         {"name": "Battleship", "size": 4, "qty": 1},
         {"name": "Cruiser", "size": 3, "qty": 1},
         {"name": "Submarine", "size": 3, "qty": 1},
-        {"name": "Destroyer", "size": 2, "qty": 2},
+        {"name": "Destroyer", "size": 1, "qty": 2},
+
     ]
 
     # Iterate through the list of default ships
@@ -515,47 +572,38 @@ def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
     return [[symbol for _ in range(height)] for _ in range(width)]
 
 
-def print_map(map_game, row_labels, column_labels):
+def print_map(map_game):
     """
     Print the game map in a human-readable format.
 
     Args:
-        map_game (list): A 2D list representing the game map, where each
-            cell contains the status of a ship or water.
-        row_labels (list): A list of labels for the rows.
-        column_labels (list): A list of labels for the
-            columns.
+        map_game (list): A 2D list representing the game map,
+                         where each cell contains the status of a ship
+                         or water.
 
     Output:
         The function will print the game map to the console.
     """
+    # Global variables for row and column indexes
+    global DEFAULT_MAP_ROW_INDEXES, DEFAULT_MAP_COLUMN_INDEXES
 
-    # Validate input arguments
-    try:
-        assert len(row_labels) == len(map_game[0]), \
-            "Row labels must match the number of columns in the map."
-        assert len(column_labels) == len(map_game), \
-            "Column labels must match the number of rows in the map."
-    except AssertionError as e:
-        print(f"Error: {e}")
-        return
-
-    # Print column headers (e.g., A, B, C, ..., Z)
+    # Print column headers (0, 1, 2, ..., N)
     print("   ", end="")
-    for col_label in row_labels:
-        print(f"{col_label}  ", end="")
+    for col_index in range(len(map_game[0])):
+        print(f"{DEFAULT_MAP_ROW_INDEXES[col_index]}  ", end="")
 
     # Print a separator line between headers and table
-    print("\n   " + "=" * (len(row_labels) * 3))
+    print("\n   " + "=" * (len(map_game[0]) * 3))
 
     # Loop through each row
     for row_index, row in enumerate(map_game):
-        # Print row header (e.g., 1, 2, 3, ..., N)
-        print(f"{column_labels[row_index]} |", end=" ")
+        # Print row header
+        print(f"{DEFAULT_MAP_COLUMN_INDEXES[row_index]} |", end=" ")
 
         # Loop through each cell in the row
-        for cell_value in row:
-            print(f"{cell_value}  ", end="")
+        for value in row:
+            # Print the cell value followed by two spaces
+            print(f"{value}  ", end="")
 
         # Move to the next line at the end of each row
         print()
@@ -720,11 +768,287 @@ def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int,
 # CPU game play functions
 # -----------------------
 
+
+def cpu_deploy_all_ships(map_game, fleet):
+    """
+    Deploy all CPU ships on the map.
+
+    This function deploys all the CPU's ships on a given game map based on
+    the fleet configuration. It uses various helper functions to find suitable
+    locations and alignments for each ship.
+
+    Args:
+        map_game (list): 2D map for the CPU.
+        fleet (Fleet): Contains the CPU's fleet information.
+
+    Returns:
+        bool: True if deployment is successful, False otherwise.
+    """
+    while True:
+        try:
+            # Get information about the biggest undeployed ship from the fleet
+            ship_obj = fleet.get_biggest_ship_by_deployed_status(False)
+
+            if ship_obj is None:
+                # If no ships left to deploy, break the loop and return True
+                return True  # Deployment is complete
+            else:
+                ship_size = ship_obj.size
+                ship_name = ship_obj.name
+                print("tomosius biggest ship", ship_size, ship_name)
+
+                # Attempt to deploy the ship and get alignment and coordinates
+                return_result = cpu_deploy_single_ship(map_game, ship_size)
+
+                if return_result is False:
+                    # Can't deploy ships, no coordinates found, return False
+                    return False
+
+                alignment, coordinates_list = return_result
+
+            ship_obj.set_cell_coordinates(coordinates_list)
+            ship_obj.set_alignment(alignment)
+            ship_obj.deployed = True
+
+            # Get ship symbols and update the map
+            symbols_list = ship_obj.get_symbols()
+
+            map_game = map_show_symbols(map_game, coordinates_list,
+                                        symbols_list)
+            print_map(map_game)
+            print(fleet)
+
+        except Exception as e:
+            # Handle exceptions if needed
+            print("An error occurred:", str(e))
+            return False  # Return False on error
+
+    return True  # Return True if deployment is successful
+
+
+def map_show_symbols(map_game: List[List[str]], coordinates_list: List[
+    Tuple[int, int]], symbols_list: List[str]) -> List[List[str]]:
+    """
+    Update the game map by placing the symbols of a ship at the specified
+    coordinates.
+
+    Parameters:
+        map_game (List[List[str]]): The 2D game map.
+        coordinates_list (List[Tuple[int, int]]): A list of coordinates
+        where the ship will be placed.
+        symbols_list (List[str]): A list of symbols that represent the
+        ship's cells.
+
+    Returns:
+        List[List[str]]: The updated 2D game map.
+
+    This function iterates over each coordinate in `coordinates_list`,
+    retrieves the corresponding symbol from `symbols_list`, and updates
+    `map_game` at that coordinate with the symbol.
+
+    Note:
+        - The length of `coordinates_list` and `symbols_list` should be the
+        same.
+        - Each coordinate in `coordinates_list` is a tuple (row, column)
+        representing a cell in the 2D game map.
+        - Each symbol in `symbols_list` is a string that represents the
+        appearance of a ship cell.
+    """
+
+    # Loop through the list of coordinates and symbols to update the game map
+    for i in range(len(coordinates_list)):
+        row, column = coordinates_list[i]  # Extract the row and column for
+        # the ith coordinate
+        map_game[row][column] = symbols_list[i]  # Update the map at the ith
+        # coordinate with the ith symbol
+
+    return map_game  # Return the updated game map
+
+
+def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
+        Union)[Tuple[str, List[Tuple[int, int]]], bool]:
+    """
+    Deploy a single ship of a given size on the game map.
+
+    Parameters:
+        map_game (List[List[str]]): The 2D game map.
+        ship_size (int): The size of the ship to deploy.
+
+    Returns:
+        Union[Tuple[str, List[Tuple[int, int]]], bool]: A tuple containing
+        the alignment and a list of coordinates where the ship is deployed,
+        or False if deployment failed.
+
+    This function performs the following key tasks:
+        1. Call the helper function `cpu_deploy_single_ship_get_coordinates`
+        to get potential coordinates and alignment for the ship.
+        2. If no coordinates are found, return False.
+        3. Randomly select one set of coordinates from the available options.
+        4. Generate the full list of coordinates based on the selected
+        starting coordinate and alignment.
+        5. Return the alignment and full list of coordinates for the deployed
+        ship.
+
+    Note:
+        - The function will return False if it's not possible to deploy the
+        ship.
+        - The alignment will be either "Horizontal" or "Vertical".
+    """
+
+    # Get potential coordinates and alignment for the ship
+    return_result = cpu_deploy_get_coordinates(map_game, ship_size)
+
+    # Check if coordinates are found
+    if return_result == False:
+        return False  # No coordinates found, return False
+
+    # Coordinates found, proceed with deployment
+    else:
+        # Extract alignment and list of potential starting coordinates
+        alignment, coordinate_list = return_result
+
+        # Randomly select a starting coordinate for the ship
+        location = random.choice(coordinate_list)
+
+        # Generate the full list of coordinates for the ship
+        ship_coordinate_list = create_coordinate_list(location[0], location[
+            1], alignment, ship_size)
+
+        # Return the alignment and full list of coordinates for the deployed
+        # ship
+        return alignment, ship_coordinate_list
+
+
+from typing import List, Tuple, Union
+from random import choice
+
+
+def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
+        Union[Tuple[str, List[Tuple[int, int]]], bool]:
+    """
+    Determine suitable coordinates for deploying a single ship on the game map.
+
+    Parameters:
+        map_game (List[List[str]]): The 2D game map.
+        ship_size (int): The size of the ship to deploy.
+
+    Returns:
+        Union[Tuple[str, List[Tuple[int, int]]], bool]: A tuple containing
+        the alignment ("Horizontal", "Vertical", or "Single") and a list of
+        suitable coordinates for deploying the ship. Returns False if no
+        suitable coordinates are found.
+
+    This function performs the following key tasks:
+        1. Determines the alignment of the ship based on its size.
+        2. Call the `search_map_for_pattern` function to find suitable
+        coordinates based on the alignment.
+        3. If no suitable coordinates are found, it tries the other
+        alignment (from "Vertical" to "Horizontal" or vice versa).
+
+    Note:
+        - The function will return False if no suitable location is found
+        for deploying the ship.
+        - For a ship of size 1, the alignment will be "Single".
+    """
+
+    # Determine alignment based on ship size
+    if ship_size == 1:
+        alignment = "Single"
+        # Search for a single empty cell on the map
+        result = search_map_for_pattern(map_game, 1, 1)
+        if not result:
+            return False  # Abort if no suitable location is found
+
+    else:
+        # Randomly choose alignment for multi-cell ships
+        alignment = choice(["Horizontal", "Vertical"])
+
+        # Search for a suitable location based on the chosen alignment
+        if alignment == "Vertical":
+            result = search_map_for_pattern(map_game, ship_size, 1)
+            # If no suitable location is found in vertical alignment,
+            # try horizontal
+            if not result:
+                alignment = "Horizontal"
+                result = search_map_for_pattern(map_game, 1, ship_size)
+                if not result:
+                    return False  # Abort if no suitable location is found
+
+        elif alignment == "Horizontal":
+            result = search_map_for_pattern(map_game, 1, ship_size)
+            # If no suitable location is found in horizontal alignment,
+            # try vertical
+            if not result:
+                alignment = "Vertical"
+                result = search_map_for_pattern(map_game, ship_size, 1)
+                if not result:
+                    return False  # Abort if no suitable location is found
+
+    return alignment, result
+
+
+def search_map_for_pattern(map_game, height, width):
+    """
+    Search for occurrences of a pattern of DEFAULT_SYMBOL on the map and
+    return their coordinates.
+
+    This function iterates through the game map to find all occurrences of a
+    pattern
+    of DEFAULT_SYMBOL of the specified height and width. The coordinates of
+    the top-left
+    corner of each found pattern are returned.
+
+    Args:
+        map_game (List[List[str]]): The 2D game map.
+        height (int): The height of the pattern to search for.
+        width (int): The width of the pattern to search for.
+
+    Global Variables:
+        DEFAULT_SYMBOL (str): The default symbol representing an empty cell
+        on the map.
+
+    Returns:
+        List[Tuple[int, int]]: A list of coordinates (row, col) where the
+        pattern is found.
+                               Returns an empty list if no pattern is found.
+    """
+
+    # Reference the global variable for the default symbol
+    global DEFAULT_SYMBOL
+
+    # Retrieve the dimensions of the game map
+    map_height, map_width = len(map_game), len(map_game[0])
+
+    # Initialize an empty list to collect coordinates where the pattern is
+    # found
+    coordinates = []
+
+    # Create the pattern using list comprehension
+    pattern = [[DEFAULT_SYMBOL] * width for _ in range(height)]
+
+    # Traverse the map to find matching patterns
+    for row in range(map_height - height + 1):
+        for col in range(map_width - width + 1):
+            # Check if the section of the map matches the pattern
+            if all(
+                    map_game[row + i][col + j] == pattern[i][j]
+                    for i in range(height)
+                    for j in range(width)
+            ):
+                # If the pattern matches, add the coordinates to the list
+                coordinates.append([row, col])
+    ic(coordinates)
+    return coordinates  # Return the list of coordinates where the pattern is
+
+
+# found
+
+
 # Various helping functions
 # ------------------------------
 
 def create_coordinate_list(row: int, column: int, alignment: str, ship_size:
-int) -> List[List[int, int]]:
+int) -> List:
     """
     Create a list of coordinates where the ship will be placed on the map.
 
@@ -735,7 +1059,7 @@ int) -> List[List[int, int]]:
     Args:
         row (int): The starting row index for the ship.
         column (int): The starting column index for the ship.
-        alignment (str): The orientation of the ship ("Horizontal" or
+        alignment (str): The alignment of the ship ("Horizontal" or
         "Vertical").
         ship_size (int): The size of the ship.
 
@@ -762,7 +1086,7 @@ int) -> List[List[int, int]]:
         if alignment == "Vertical":
             for cell in range(ship_size):
                 coordinates_list.append([row + cell, column])
-
+    ic(coordinates_list)
     return coordinates_list
 
 
@@ -817,3 +1141,20 @@ def map_allocate_empty_space_for_ship(map_game: List[List[str]],
 
     return map_game
 
+
+# The code below for testing purposes
+# -------------------------------
+
+map_cpu_hidden = create_map(DEFAULT_MAP_HEIGHT, DEFAULT_MAP_WIDTH,
+                            DEFAULT_SYMBOL)
+map_cpu_display = create_map(DEFAULT_MAP_HEIGHT, DEFAULT_MAP_WIDTH,
+                             DEFAULT_SYMBOL)
+fleet_cpu = create_default_fleet()
+print(fleet_cpu)
+
+cpu_deploy_all_ships(map_cpu_display, fleet_cpu)
+
+print(fleet_cpu)
+
+print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
+               DEFAULT_MAP_ROW_INDEXES, DEFAULT_MAP_COLUMN_INDEXES, 10)
