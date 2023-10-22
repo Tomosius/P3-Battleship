@@ -34,7 +34,7 @@ DEFAULT_COLORS: Dict[str, str] = {
 }
 
 # Unicode symbols used for visual representation of different ship statuses
-SHIP_SYMBOLS: Dict[str, List[str]] = {
+DEFAULT_SHIP_SYMBOLS: Dict[str, List[str]] = {
     "Single": [chr(0x25C6)],
     "Horizontal": [chr(0x25C0), chr(0x25A4)],
     "Vertical": [chr(0x25B2), chr(0x25A5)],
@@ -81,7 +81,7 @@ def clear_terminal():
 # User Input Processing Functions
 # -------------------------------
 
-def normalize_string(text_input: str) -> str:
+def input_normalize_string(text_input: str) -> str:
     """
     Normalize the command string for easier comparison.
 
@@ -135,7 +135,7 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
         None if no-reasonable match is found.
     """
     # Normalize the user input for comparison
-    user_input = normalize_string(user_input)
+    user_input = input_normalize_string(user_input)
 
     # Initialize variables to store the best match and its Levenshtein
     # distance ratio
@@ -145,7 +145,7 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
     # Loop through each possible command to find the best match
     for command in possible_commands:
         # Normalize the possible command for comparison
-        normalized_command = normalize_string(command)
+        normalized_command = input_normalize_string(command)
 
         # Calculate the Levenshtein distance ratio between the normalized
         # user input and the possible command
@@ -182,7 +182,7 @@ class Ship:
             size (int): The size of the ship, representing how
         many cells it occupies.
 
-        Attributes:
+        Variables:
             name (str): The name of the ship.
             size (int): The size of the ship in cells.
             cell_coordinates (List[Tuple[int, int]]): Coordinates (x, y) for
@@ -304,7 +304,7 @@ class Ship:
         symbol_key = self.alignment
 
         # Get the list of symbols for the ship based on its size and alignment
-        symbols = SHIP_SYMBOLS.get(symbol_key, ["default_symbol"])
+        symbols = DEFAULT_SHIP_SYMBOLS.get(symbol_key, ["default_symbol"])
 
         # Handle the case where symbols is None or empty
         if not symbols:
@@ -333,7 +333,7 @@ class Fleet:
     def __init__(self) -> None:
         """
         Initialize an empty Fleet object.
-        Attributes:
+        Variables:
             ships (List[Ship]):
              A list to store the Ship objects that belong to this fleet.
         """
@@ -632,234 +632,70 @@ def find_max_label_length(map_size: int,
 
 
 def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
-                   label_left: str, label_right: str,
-                   row_index_label: List[str], column_index_label: List[str],
-                   gap: int = 10) -> None:
+                   label_left: str, label_right: str, row_index_label,
+                   column_index_label, gap: int = 10) -> None:
     """
     Print two 2D maps side-by-side with dynamically centered labels and a
     customizable gap.
 
-    This function prints two 2D maps with labels, column headers,
-    and a separator line.
-    The function relies on several helper functions to modularize the task
-    of printing each component.
-
     Args:
-        map_left (List[List[str]]): A 2D list representing the first map.
-        map_right (List[List[str]]): A 2D list representing the second map.
-        label_left (str): Label for the first map.
-        label_right (str): Label for the second map.
-        row_index_label (List[str]): List of row index labels.
-        column_index_label (List[str]): List of column index labels.
-        gap (int, optional): Number of blank spaces between the two maps.
-        Default is 10.
+        map_left : A 2D list representing the first map.
+        map_right: A 2D list representing the second map.
+        label_left: Label for the first map.
+        label_right: Label for the second map.
+        row_index_label: Label indicating row index of the map
+        column_index_label: Label indicating column index of the map
 
-    Returns:
-        None: This function prints the maps to the console and returns None.
-
-    Example:
-        map1 = [["-", "-", "-"], ["-", "-", "-"], ["-", "-", "-"]]
-        map2 = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]]
-        print_two_maps(map1, map2, "Map 1", "Map 2", [0, 1, 2], [0, 1, 2],
-        gap=5)
+        gap: Number of blank spaces between the two maps. Default is 10.
     """
+
     # Constants for character dimensions and formatting
     char_width = len("X")
-    gap_str = ' ' * gap
 
-    # Calculate the maximum number of digits for row and column indexes
+    # Calculate the maximum number of digits in row and column indexes
     num_digits_map_width = find_max_label_length(len(map_left[0]),
                                                  column_index_label)
     num_digits_map_height = find_max_label_length(len(map_left),
                                                   row_index_label)
+
+    # Create a string of blank spaces for the gap between maps
+    gap_str = ' ' * gap
 
     # Calculate the left-side offset for aligning map and row indexes
     row_index_separator = " | "
     print_map_left_offset = " " * (
             num_digits_map_height + len(row_index_separator))
 
-    # Print labels
-    print_labels(print_map_left_offset, label_left, label_right,
-                 num_digits_map_width, char_width, gap_str)
-
-    # Print column headers
-    print_column_headers(print_map_left_offset, map_left, map_right,
-                         column_index_label, num_digits_map_width, char_width,
-                         gap_str)
-
-    # Print the separator line
-    print_separator(print_map_left_offset, map_left, map_right,
-                    num_digits_map_width, char_width, gap_str)
-
-    # Print map values
-    print_map_values(map_left, map_right, row_index_label,
-                     num_digits_map_width, num_digits_map_height, char_width,
-                     row_index_separator, gap_str)
-
-
-def print_labels(offset: str, label_left: str, label_right: str,
-                 num_digits_map_width: int, char_width: int, gap_str: str) \
-        -> None:
-    """
-    Print the centered labels for both maps.
-
-    This function takes care of printing the labels for the two maps,
-    ensuring that they are centered
-    above each respective map. The centering takes into account the width of
-    each cell and the number of columns.
-
-    Args:
-        offset (str): The left-side offset for aligning map and row indexes.
-        label_left (str): Label for the first map.
-        label_right (str): Label for the second map.
-        num_digits_map_width (int): Maximum number of digits for columns.
-        char_width (int): Width of each character in the map.
-        gap_str (str): String of blank spaces for the gap between maps.
-
-    Returns:
-        None: This function prints the labels to the console and returns None.
-
-    Example:
-        print_labels("  | ", "Map 1", "Map 2", 2, 1, "    ")
-
-    Note:
-        The function calculates the total character width of the table based
-        on the labels and uses this information for centering.
-    """
-    # Calculate the total character width of the table based on the labels
-    number_char_table_total = len(label_left) * (
+    # Center-align the labels for both maps
+    number_char_table_total = len(map_left[0]) * (
             num_digits_map_width + char_width + 1)
-
-    # Center-align the labels based on the calculated width
     label_left_centered = label_left.center(number_char_table_total)
     label_right_centered = label_right.center(number_char_table_total)
 
-    # Print the centered labels
-    print(
-        f"{offset}{label_left_centered}{gap_str}"
-        f"{offset}{label_right_centered}")
+    # Print the centered labels for both maps
+    print(f"{print_map_left_offset}{label_left_centered}{gap_str}"
+          f"{print_map_left_offset}{label_right_centered}")
 
-
-def print_column_headers(offset: str,map_left: List[List[str]], map_right:
-    List[List[str]], column_index_label: List[str], num_digits_map_width:
-    int, char_width: int, gap_str: str) -> None:
-    """
-    Print the column headers for both maps.
-
-    This function prints the column headers (usually numerical or 
-    alphabetical indices)
-    for both the left and right maps. The column headers are aligned to the 
-    right
-    in each cell to ensure that they line up neatly with the map data.
-
-    Args:
-        offset (str): The left-side offset for aligning map and row indexes.
-        map_left (List[List[str]]): A 2D list representing the first map.
-        map_right (List[List[str]]): A 2D list representing the second map.
-        column_index_label (List[str]): List of labels for column headers.
-        num_digits_map_width (int): Maximum number of digits for columns.
-        char_width (int): Width of each character in the map.
-        gap_str (str): String of blank spaces for the gap between maps.
-
-    Returns:
-        None: This function prints the column headers to the console and
-        returns None.
-
-    Example:
-        print_column_headers("  | ", [['~']*5]*5, [['~']*5]*5, ['0', '1',
-        '2', '3', '4'], 1, 1, "    ")
-
-    Note:
-        The function uses Python's built-in string method `rjust` to
-        right-align the column headers within each cell.
-    """
-
-    print(offset, end=" ")
+    # Print column headers for both maps
+    print(print_map_left_offset, end=" ")
     for col_index in range(len(map_left[0])):
-        print(str(column_index_label[col_index]).rjust(
-            num_digits_map_width + char_width), end=" ")
-    print(gap_str, end="")
+        print(str(column_index_label[col_index]).rjust(num_digits_map_width +
+                                                       char_width), end=" ")
+    print(gap_str, print_map_left_offset, end="")
     for col_index in range(len(map_right[0])):
         print(str(column_index_label[col_index]).rjust(
             num_digits_map_width + char_width), end=" ")
     print()
 
-
-def print_separator(offset: str, map_left: List[List[str]], map_right: List[
-    List[str]], num_digits_map_width: int, char_width: int, gap_str: str) ->\
-        None:
-    """
-    Print the horizontal separator line for both maps.
-
-    This function prints a horizontal line of equal signs ('=') beneath the
-    column headers of both maps. The line acts as a separator between the
-    column headers and the map data.
-
-    Args:
-        offset (str): The left-side offset for aligning map and row indexes.
-        map_left (List[List[str]]): A 2D list representing the first map.
-        map_right (List[List[str]]): A 2D list representing the second map.
-        num_digits_map_width (int): Maximum number of digits for columns.
-        char_width (int): Width of each character in the map.
-        gap_str (str): String of blank spaces for the gap between maps.
-
-    Returns:
-        None: This function prints the separator lines to the console and
-        returns None.
-
-    Example:
-        print_separator("  | ", [['~']*5]*5, [['~']*5]*5, 1, 1, "    ")
-
-    Note:
-        The function calculates the length of the separator line based on the
-        number of columns in the map, the maximum number of digits for columns,
-        and the width of each character in the map. It then prints this line
-        for both maps.
-    """
-
+    # Print the horizontal separator line
     separator_length_left = len(map_left[0]) * (
             num_digits_map_width + char_width + 1)
     separator_length_right = len(map_right[0]) * (
             num_digits_map_width + char_width + 1)
-    print(offset + "=" * separator_length_left, end=gap_str)
-    print(" " + offset + "=" * separator_length_right)
+    print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
+    print(" " + print_map_left_offset + "=" * separator_length_right)
 
-
-def print_map_values(map_left: List[List[str]], map_right: List[List[str]],
-                     row_index_label: List[int], num_digits_map_width: int,
-                     num_digits_map_height: int, char_width: int,
-                     row_index_separator: str, gap_str: str) -> None:
-    """
-    Loop through each row to print map values for both maps side by side.
-
-    This function iterates through the rows of the two given 2D maps and prints
-    the values in a formatted manner. The printed maps are separated by a gap,
-    and each map has its own row and column labels.
-
-    Args:
-        map_left (List[List[str]]): A 2D list representing the first map.
-        map_right (List[List[str]]): A 2D list representing the second map.
-        row_index_label (List[int]): List of row index labels.
-        num_digits_map_width (int): Maximum number of digits for columns.
-        num_digits_map_height (int): Maximum number of digits for rows.
-        char_width (int): Width of each character in the map.
-        row_index_separator (str): Separator between row index and map values.
-        gap_str (str): String of blank spaces for the gap between maps.
-
-    Returns:
-        None: This function prints the map values to the console and returns None.
-
-    Example:
-        print_map_values("  | ", [['~']*5]*5, [['~']*5]*5, [0, 1, 2, 3, 4],
-        [0, 1, 2, 3, 4], 1, 1, 1, " | ", "    ")
-
-    Note:
-        The function dynamically adjusts the spacing for each cell value based
-        on the maximum number of digits for rows and columns, as well as the
-        character width, to ensure proper alignment. It prints each value using
-        the Python `rjust()` method for right-justified formatting.
-    """
-
+    # Loop through each row to print map values
     for row_index, (row_left, row_right) in enumerate(
             zip(map_left, map_right)):
         print(str(row_index_label[row_index]).rjust(num_digits_map_height + 1),
@@ -881,7 +717,7 @@ def print_map_values(map_left: List[List[str]], map_right: List[List[str]],
 
 
 # Corrected function to include map_width and map_height in calculations
-def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int,
+def map_calculate_max_dimensions(map_height: int, map_width: int, gap: int,
                                  row_index_label: List[Union[int, str]],
                                  column_index_label: List[
                                      Union[int, str]]) -> (int, int):
@@ -927,7 +763,7 @@ def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int,
 # -----------------------
 
 
-def cpu_deploy_all_ships(map_game, fleet):
+def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps = True):
     """
     Deploy all CPU ships on the map.
 
@@ -938,6 +774,8 @@ def cpu_deploy_all_ships(map_game, fleet):
     Args:
         map_game (list): 2D map for the CPU.
         fleet (Fleet): Contains the CPU's fleet information.
+        gaps (bool): By default gas are enabled on map, if player disables,
+        it will be passed to this function
 
     Returns:
         bool: True if deployment is successful, False otherwise.
@@ -970,6 +808,13 @@ def cpu_deploy_all_ships(map_game, fleet):
             # Get ship symbols and update the map
             symbols_list = ship_obj.get_symbols()
 
+            if gaps:
+                symbol = "x"
+
+                map_game = map_allocate_empty_space_for_ship(map_game,
+                                                             coordinates_list, symbol)
+
+
             map_game = map_show_symbols(map_game, coordinates_list,
                                         symbols_list)
             print_map(map_game)
@@ -979,7 +824,6 @@ def cpu_deploy_all_ships(map_game, fleet):
             # Handle exceptions if needed
             print("An error occurred:", str(e))
             return False  # Return False on error
-
 
 
 def map_show_symbols(map_game: List[List[str]], coordinates_list: List[
@@ -1019,6 +863,58 @@ def map_show_symbols(map_game: List[List[str]], coordinates_list: List[
         # coordinate with the ith symbol
 
     return map_game  # Return the updated game map
+
+
+def map_allocate_empty_space_for_ship(map_game: List[List[str]],
+                                      coordinates_list: List[Tuple[int,
+                                      int]], symbol: str):
+    """
+    Allocate empty space around a ship on a 2D map.
+
+    This function modifies the given map_game to ensure that ships cannot be
+    deployed touching each other. It marks the empty space around a ship with
+    'Miss' symbols. After all ships are deployed, these symbols will be
+    changed back to DEFAULT_SYMBOL.
+
+    Args:
+        map_game (list): The 2D map where the ship will be deployed.
+        coordinates_list (list): List of coordinates where the ship is
+        located.
+
+    Global Variables:
+        SHIP_SYMBOLS (dict): Dictionary containing ship symbols.
+
+    Returns:
+        list: Modified game map with empty spaces around the ship.
+    """
+
+    # Access the global variable SHIP_SYMBOLS for ship symbols
+
+    # Define the relative positions for empty space around a single cell
+    blank_space = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 0], [0, 1],
+                   [1, -1], [1, 0], [1, 1]]
+
+    # Initialize an empty list to store the coordinates for empty spaces
+    blank_space_coordinates_list = []
+
+    # Calculate the actual positions for empty space around each cell of the
+    # ship
+    for space in blank_space:
+        blank_row, blank_column = space
+        for coordinate in coordinates_list:
+            new_row, new_column = coordinate
+            new_blank_row, new_blank_column = (blank_row + new_row,
+                                               blank_column + new_column)
+            blank_space_coordinates_list.append([new_blank_row,
+                                                 new_blank_column])
+
+    # Update the map to allocate empty space around the ship
+    for new_space in blank_space_coordinates_list:
+        b_row, b_column = new_space
+        if 0 <= b_row < len(map_game) and 0 <= b_column < len(map_game[0]):
+            map_game[b_row][b_column] = symbol
+
+    return map_game
 
 
 def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
@@ -1086,12 +982,13 @@ def search_coordinates(map_game: List[List[str]], ship_size: int,
         alignment (str): The alignment ("Horizontal" or "Vertical").
 
     Returns:
-        List[Tuple[int, int]] or None: A list of coordinates if found, otherwise None.
+        List[Tuple[int, int]] or None: A list of coordinates if found,
+        otherwise None.
     """
     if alignment == "Vertical":
-        return search_map_for_pattern(map_game, ship_size, 1)
+        return map_search_for_pattern(map_game, ship_size, 1)
     elif alignment == "Horizontal":
-        return search_map_for_pattern(map_game, 1, ship_size)
+        return map_search_for_pattern(map_game, 1, ship_size)
     return None
 
 
@@ -1124,7 +1021,7 @@ def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
     """
     if ship_size == 1:
         alignment = "Single"
-        result = search_map_for_pattern(map_game, 1, 1)
+        result = map_search_for_pattern(map_game, 1, 1)
         if not result:
             return False  # Abort if no suitable location is found
         return alignment, result
@@ -1133,12 +1030,13 @@ def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
     for alignment in ["Horizontal", "Vertical"]:
         result = search_coordinates(map_game, ship_size, alignment)
         if result:
-            return alignment, result  # Return alignment and coordinates if found
+            return alignment, result  # Return alignment and coordinates if
+            # found
 
     return False  # Return False if no suitable coordinates are found
 
 
-def search_map_for_pattern(map_game, height, width):
+def map_search_for_pattern(map_game, height, width):
     """
     Search for occurrences of a pattern of DEFAULT_SYMBOL on the map and
     return their coordinates.
@@ -1296,9 +1194,10 @@ def map_allocate_empty_space_for_ship(map_game: List[List[str]],
 # The code below for testing purposes
 # -------------------------------
 
-map_cpu_hidden = create_map(DEFAULT_MAP_HEIGHT, DEFAULT_MAP_WIDTH,
+
+map_cpu_hidden = create_map(13, 13,
                             DEFAULT_SYMBOL)
-map_cpu_display = create_map(DEFAULT_MAP_HEIGHT, DEFAULT_MAP_WIDTH,
+map_cpu_display = create_map(13, 13,
                              DEFAULT_SYMBOL)
 fleet_cpu = create_default_fleet()
 print(fleet_cpu)
