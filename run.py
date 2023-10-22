@@ -127,7 +127,7 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
     Parameters:
         user_input (str): The user's input string
         possible_commands (List[str]): A list of possible commands to match
-        against.
+            against.
 
     Returns:
         Optional[str]:
@@ -185,11 +185,11 @@ class Ship:
             name (str): The name of the ship.
             size (int): The size of the ship in cells.
             cell_coordinates (List[Tuple[int, int]]): Coordinates (x, y) for
-            each cell of the ship.
+                each cell of the ship.
             sunk (bool): Indicates whether the ship is sunk or not.
             color (str): ANSI color code for the ship, based on its status.
             orientation (str): Orientation of the ship ("Horizontal" or
-            "Vertical").
+                "Vertical").
         """
         self.name = name
         self.size = size
@@ -209,7 +209,7 @@ class Ship:
         Set the coordinates for each cell of the ship.
 
         Parameters: coordinates (List[Tuple[int, int]]): A list of (x,
-        y) tuples representing the coordinates for each cell.
+            y) tuples representing the coordinates for each cell.
         """
         self.cell_coordinates = coordinates
 
@@ -219,22 +219,24 @@ class Ship:
         Get the full list of coordinates for the ship based on a single
         coordinate.
 
-        Parameters: single_coordinate (Tuple[int, int]): The single (x,
-        y) coordinate to search for within the ship's cell_coordinates.
+        Parameters:
+            single_coordinate (Tuple[int, int]): The single (x, y)
+                coordinate to search for within the ship's cell_coordinates.
 
-        Returns: List[Tuple[int, int]]: A list of (x, y) coordinates
-        associated with the ship based on the provided single coordinate.
+        Returns:
+            List[Tuple[int, int]]: A list of (x, y) coordinates
+                associated with the ship based on the provided single
+                coordinate.
 
         This method searches for the provided single coordinate within the
-        ship's cell_coordinates and returns the full list of coordinates
+        ship's cell_coordinates
+        and returns the full list of coordinates
         associated with the ship.
         """
         coordinates_list = []
         if single_coordinate in self.cell_coordinates:
             coordinates_list = self.cell_coordinates
         return coordinates_list
-
-
 
     def set_alignment(self, orientation: str) -> None:
         """
@@ -272,17 +274,19 @@ class Ship:
 
         Returns:
             List[str]: A list of symbols for all cells of the ship,
-            colored based on the ship's current status.
+                colored based on the ship's current status.
 
         This function performs the following key tasks:
-        1. Check if the ship is sunk.
-        2. Determines the appropriate symbol for the ship based on its size and orientation.
-        3. Colors the symbols based on the ship's status
-        (for example, red if sunk).
+            1. Check if the ship
+                is sunk.
+            2. Determine the appropriate symbol for the ship based on
+                its size and orientation.
+            3. Color the symbols based on the ship's
+                status (for example, red if sunk).
 
         Note:
-            The color of each symbol will be red
-        if the ship is sunk or if the cell is hit.
+            The color of each symbol will be red if the ship is sunk or if
+                the cell is hit.
         """
         # Determine the color based on sunk status
         if self.sunk:
@@ -290,39 +294,47 @@ class Ship:
         else:
             color = self.color
 
-        # Determine the symbol key based on the size and orientation of the ship
+        # Determine the symbol key based on the size and orientation of the
+        # ship
         symbol_key = self.orientation
 
-        # Get the list of symbols for the ship based on its size and orientation
+        # Get the list of symbols for the ship based on its size and
+        # orientation
         symbols = SHIP_SYMBOLS[symbol_key]
 
         # Color each symbol based on the ship's status
-        colored_symbols = [color + symbol + DEFAULT_COLORS["Reset"] for symbol in symbols]
+        colored_symbols = [color + symbol + DEFAULT_COLORS["Reset"] for
+                           symbol in symbols]
 
         return colored_symbols
 
 
-
 class Fleet:
-    """Manages a collection of Ship objects, encapsulating them in a fleet
-    for the Battleship game."""
+    """
+    Manages a collection of Ship objects, encapsulating them in a fleet
+    for the Battleship game.
+    """
 
     def __init__(self) -> None:
-        """Initialize an empty Fleet object.
+        """
+        Initialize an empty Fleet object.
         Attributes:
-            ships (List[Ship]): A list to store the Ship objects that belong to this fleet.
+            ships (List[Ship]):
+             A list to store the Ship objects that belong to this fleet.
         """
         self.ships: List[Ship] = []
 
     def add_ship(self, ship: Ship) -> None:
-        """Add a Ship object to the fleet.
+        """
+        Add a Ship object to the fleet.
         Parameters:
-            ship (Ship): The Ship object to be added to the fleet.
+            ship (Ship): The Ships object to be added to the fleet.
         """
         self.ships.append(ship)
 
     def remove_ship(self, name: str) -> bool:
-        """Remove one instance of a ship by its name from the fleet.
+        """
+        Remove one instance of a ship by its name from the fleet.
         Parameters:
             name (str): The name of the ship to be removed.
         Returns:
@@ -335,11 +347,15 @@ class Fleet:
         return False
 
     def get_ship(self, name: str) -> Union[Ship, None]:
-        """Retrieve a Ship object from the fleet by its name.
+        """
+        Retrieve a Ship object from the fleet by its name.
+
         Parameters:
             name (str): The name of the ship to retrieve.
+
         Returns:
-            Ship or None: Returns the Ship object if found; returns None if not found.
+            Ship or None: Returns the Ship object if found; returns None if
+                not found.
         """
         for ship in self.ships:
             if ship.name == name:
@@ -347,7 +363,8 @@ class Fleet:
         return None
 
     def get_ship_quantity(self, name: str) -> int:
-        """Get the quantity of a specific type of ship in the fleet.
+        """
+        Get the quantity of a specific type of ship in the fleet.
         Parameters:
             name (str): The name of the type of ship to count.
         Returns:
@@ -359,16 +376,20 @@ class Fleet:
                 count += 1
         return count
 
-    def get_ship_quantity_by_sunk_status(self, name: str, is_sunk: bool = False) -> int:
-        """Get the quantity of a specific type of ship in the fleet based on its sunk status.
+    def get_ship_quantity_by_sunk_status(self, name: str, is_sunk: bool =
+    False) -> int:
+        """
+        Get the quantity of a specific type of ship in the fleet based on
+        its sunk status.
 
         Parameters:
             name (str): The name of the type of ship to count.
             is_sunk (bool, optional): Whether to count ships that are sunk.
-                                      Default is False, which counts not-sunk ships.
+                Default is False, which counts not-sunk ships.
 
         Returns:
-            int: The number of ships of this type in the fleet based on sunk status.
+            int: The number of ships of this type in the fleet based on
+                sunk status.
         """
         count = 0
         for ship in self.ships:
@@ -376,23 +397,26 @@ class Fleet:
                 count += 1
         return count
 
-    def get_ship_quantity_by_deployed_status(self, name: str, is_deployed: bool = False) -> int:
-        """Get the quantity of a specific type of ship in the fleet based on its deployed status.
+    def get_ship_quantity_by_deployed_status(self, name: str, is_deployed:
+    bool = False) -> int:
+        """
+        Get the quantity of a specific type of ship in the fleet based on 
+        its deployed status.
 
         Parameters:
             name (str): The name of the type of ship to count.
-            is_deployed (bool, optional): Whether to count ships that are deployed.
-                                          Default is False, which counts not-deployed ships.
+                is_deployed (bool, optional): Whether to count ships that are 
+                deployed. Default is False, which counts not-deployed ships.
 
         Returns:
-            int: The number of ships of this type in the fleet based on deployed status.
+            int: The number of ships of this type in the fleet based on 
+                deployed status.
         """
         count = 0
         for ship in self.ships:
             if ship.name == name and ship.deployed == is_deployed:
                 count += 1
         return count
-
 
     def __str__(self) -> str:
         """
@@ -410,25 +434,26 @@ class Fleet:
         output = "Fleet Status:\n"
 
         # Loop through each Ship object in the fleet.
-        # The enumerate function provides an index starting from 1 for each ship.
+        # The enumerate function provides an index starting from 1 for each
+        # ship.
         for i, ship in enumerate(self.ships, 1):
-
-            # Append the index, name, and size of each ship to the output string.
+            # Append the index, name, and size of each ship to the output
+            # string.
             output += f"{i}. {ship.name} (Size: {ship.size})\n"
 
             # Append the coordinates of each ship to the output string.
             output += f"   Coordinates: {ship.cell_coordinates}\n"
 
-            # Check the sunk status of the ship and append it to the output string.
+            # Check the sunk status of the ship and append it to the output
+            # string.
             output += f"   Sunk: {'Yes' if ship.sunk else 'No'}\n"
 
-            # Check the deployment status of the ship and append it to the output string.
+            # Check the deployment status of the ship and append it to the
+            # output string.
             output += f"   Deployed: {'Yes' if ship.deployed else 'No'}\n"
 
         # Return the fully constructed output string.
         return output
-
-
 
 
 def create_default_fleet() -> Fleet:
@@ -440,8 +465,10 @@ def create_default_fleet() -> Fleet:
 
     This function performs the following key tasks:
     1. Initializes an empty Fleet object.
-    2. Defines a list of default ships, specifying their names, sizes, and quantities.
-    3. Iterates through the list of default ships, creating Ship objects and adding them to the fleet.
+    2. Defines a list of default ships, specifying their names, sizes,
+    and quantities.
+    3. Iterates through the list of default ships,
+    creating Ship objects and adding them to the fleet.
     """
     # Initialize an empty Fleet object
     fleet = Fleet()
@@ -464,6 +491,7 @@ def create_default_fleet() -> Fleet:
 
     return fleet
 
+
 # Map manipulating functions
 # --------------------------
 def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
@@ -477,7 +505,7 @@ def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
 
     Returns:
         List[List[str]]: A 2D list (map) where each cell is initialized
-        with the given symbol.
+            with the given symbol.
 
     This function performs two key tasks: 1. Creates a 2D list (map) with
     dimensions specified by `height` and `width`. 2. Fill each cell in the
@@ -695,7 +723,8 @@ def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int,
 # Various helping functions
 # ------------------------------
 
-def create_coordinate_list(row, column, alignment, ship_size):
+def create_coordinate_list(row: int, column: int, alignment: str, ship_size:
+int) -> List[List[int, int]]:
     """
     Create a list of coordinates where the ship will be placed on the map.
 
@@ -737,11 +766,12 @@ def create_coordinate_list(row, column, alignment, ship_size):
     return coordinates_list
 
 
-def map_allocate_empty_space_for_ship(map_game, coordinates_list, symbol):
+def map_allocate_empty_space_for_ship(map_game: List[List[str]],
+                                      coordinates_list: List, symbol: str):
     """
     Allocate empty space around a ship on a 2D map.
 
-    This function modifies the given map_game to ensure that ships cannot be
+    This function modifies the given map_game to ensure that ships can't be
     deployed touching each other. It marks the empty space around a ship with
     'Miss' symbols. After all ships are deployed, these symbols will be
     changed back to DEFAULT_SYMBOL.
@@ -750,6 +780,7 @@ def map_allocate_empty_space_for_ship(map_game, coordinates_list, symbol):
         map_game (list): The 2D map where the ship will be deployed.
         coordinates_list (list): List of coordinates where the ship is
         located.
+        symbol (str): The Symbol will be displayed on the game map
 
     Global Variables:
         SHIP_SYMBOLS (dict): Dictionary containing ship symbols.
