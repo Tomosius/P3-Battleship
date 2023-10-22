@@ -168,6 +168,141 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
 # ------------------------
 
 
+class Ship:
+    """Represents a single ship in the Battleship game."""
+
+    def __init__(self, name: str, size: int) -> None:
+        """
+        Initialize a Ship object with its name and size.
+
+        Parameters:
+            name (str): The name of the ship (for example,
+        "Destroyer").
+            size (int): The size of the ship, representing how
+        many cells it occupies.
+
+        Attributes:
+            name (str): The name of the ship.
+            size (int): The size of the ship in cells.
+            cell_coordinates (List[Tuple[int, int]]): Coordinates (x, y) for
+            each cell of the ship.
+            sunk (bool): Indicates whether the ship is sunk or not.
+            color (str): ANSI color code for the ship, based on its status.
+            orientation (str): Orientation of the ship ("Horizontal" or
+            "Vertical").
+        """
+        self.name = name
+        self.size = size
+        self.cell_coordinates = []
+        self.sunk = False
+        self.color = None
+        self.orientation = None
+        self.deployed = False
+
+        # Setting initial color and orientation based on ship size
+        if self.size == 1:
+            self.orientation = "Single"
+            self.color = "DarkYellow"
+
+    def set_cell_coordinates(self, coordinates: List[Tuple[int, int]]) -> None:
+        """
+        Set the coordinates for each cell of the ship.
+
+        Parameters: coordinates (List[Tuple[int, int]]): A list of (x,
+        y) tuples representing the coordinates for each cell.
+        """
+        self.cell_coordinates = coordinates
+
+    def get_coordinates_by_single_coordinate(
+            self, single_coordinate: Tuple[int, int]) -> List[Tuple[int, int]]:
+        """
+        Get the full list of coordinates for the ship based on a single
+        coordinate.
+
+        Parameters: single_coordinate (Tuple[int, int]): The single (x,
+        y) coordinate to search for within the ship's cell_coordinates.
+
+        Returns: List[Tuple[int, int]]: A list of (x, y) coordinates
+        associated with the ship based on the provided single coordinate.
+
+        This method searches for the provided single coordinate within the
+        ship's cell_coordinates and returns the full list of coordinates
+        associated with the ship.
+        """
+        coordinates_list = []
+        if single_coordinate in self.cell_coordinates:
+            coordinates_list = self.cell_coordinates
+        return coordinates_list
+
+
+
+    def set_alignment(self, orientation: str) -> None:
+        """
+        Set the alignment of the ship and update its color based on the
+        orientation.
+
+        Parameters:
+            orientation (str): The orientation of the ship, either
+            "Horizontal" or "Vertical".
+        """
+        self.orientation = orientation
+        if orientation == "Horizontal":
+            self.color = DEFAULT_COLORS["DarkBlue"]
+        elif orientation == "Vertical":
+            self.color = DEFAULT_COLORS["DarkGreen"]
+
+    def set_sunk(self) -> None:
+        """
+        Update the ship's status to indicate that it has been sunk.
+
+        This function performs two key tasks: 1. It changes the 'sunk'
+        attribute of the Ship object to True, indicating that the ship is
+        now sunk. 2. It updates the ship's color to red, signifying its sunk
+        status on the game map.
+
+        Note: Once a ship is marked as sunk, its color will remain red
+        regardless of other status changes or updates.
+        """
+        self.sunk = True
+        self.color = DEFAULT_COLORS["DarkRed"]
+
+    def get_symbols(self) -> List[str]:
+        """
+        Get symbols for all ship cells based on its hit status and orientation.
+
+        Returns:
+            List[str]: A list of symbols for all cells of the ship,
+            colored based on the ship's current status.
+
+        This function performs the following key tasks:
+        1. Check if the ship is sunk.
+        2. Determines the appropriate symbol for the ship based on its size and orientation.
+        3. Colors the symbols based on the ship's status
+        (for example, red if sunk).
+
+        Note:
+            The color of each symbol will be red
+        if the ship is sunk or if the cell is hit.
+        """
+        # Determine the color based on sunk status
+        if self.sunk:
+            color = DEFAULT_COLORS["DarkRed"]
+        else:
+            color = self.color
+
+        # Determine the symbol key based on the size and orientation of the ship
+        symbol_key = self.orientation
+
+        # Get the list of symbols for the ship based on its size and orientation
+        symbols = SHIP_SYMBOLS[symbol_key]
+
+        # Color each symbol based on the ship's status
+        colored_symbols = [color + symbol + DEFAULT_COLORS["Reset"] for symbol in symbols]
+
+        return colored_symbols
+
+
+
 class Fleet:
     """Manages a collection of Ship objects, encapsulating them in a fleet
     for the Battleship game."""
@@ -329,7 +464,8 @@ def create_default_fleet() -> Fleet:
 
     return fleet
 
-
+# Map manipulating functions
+# --------------------------
 def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
     """
     Initialize a 2D map with a default symbol.
@@ -556,7 +692,7 @@ def calculate_max_map_dimensions(map_height: int, map_width: int, gap: int,
 # CPU game play functions
 # -----------------------
 
-# Various game helping functions
+# Various helping functions
 # ------------------------------
 
 def create_coordinate_list(row, column, alignment, ship_size):
@@ -649,5 +785,4 @@ def map_allocate_empty_space_for_ship(map_game, coordinates_list, symbol):
             map_game[b_row][b_column] = symbol
 
     return map_game
-
 
