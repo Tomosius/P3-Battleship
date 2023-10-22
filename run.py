@@ -510,7 +510,8 @@ class Fleet:
         Print the fleet information as a table.
 
         Parameters:
-            status_filter (str, optional): The status to filter the ships by ("sunk" or "deployed").
+            status_filter (str, optional): The status to filter the ships by
+            ("sunk" or "deployed").
                 Default is None, which shows all ships.
         """
 
