@@ -171,6 +171,7 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
 class Ship:
     """Represents a single ship in the Battleship game."""
 
+    # noinspection PyAttributeOutsideInit
     def __init__(self, name: str, size: int) -> None:
         """
         Initialize a Ship object with its name and size.
@@ -360,16 +361,16 @@ class Fleet:
                 return True
         return False
 
-    def get_ship(self, name: str, is_deployed: bool = False) -> Union[Ship,
-    None]:
+    def get_ship(self, name: str, is_deployed: bool = False)\
+            -> Union[Ship, None]:
         """
         Retrieve a Ship object from the fleet by its name and deployment
         status.
 
         Parameters:
             name (str): The name of the ship to retrieve.
-            is_deployed (bool): Whether to retrieve a deployed or undeployed
-                ship. Defaults to False, which retrieves undeployed ships.
+            is_deployed (bool): Whether to retrieve a deployed or not deployed
+                ship. Defaults to False, which retrieves not deployed ships.
 
         Returns:
             Ship or None: Returns the Ship object if found; returns None if
@@ -394,8 +395,8 @@ class Fleet:
                 count += 1
         return count
 
-    def get_ship_quantity_by_sunk_status(self, name: str, is_sunk: bool =
-    False) -> int:
+    def get_ship_quantity_by_sunk_status(self, name: str,
+                                         is_sunk: bool = False) -> int:
         """
         Get the quantity of a specific type of ship in the fleet based on
         its sunk status.
@@ -415,15 +416,15 @@ class Fleet:
                 count += 1
         return count
 
-    def get_ship_quantity_by_deployed_status(self, name: str, is_deployed:
-    bool = False) -> int:
+    def get_ship_quantity_by_deployed_status(self, name: str,
+                                             is_deployed: bool = False) -> int:
         """
         Get the quantity of a specific type of ship in the fleet based on 
         its deployed status.
 
         Parameters:
             name (str): The name of the type of ship to count.
-                is_deployed (bool, optional): Whether to count ships that are 
+            is_deployed (bool, optional): Whether to count ships that are
                 deployed. Default is False, which counts not-deployed ships.
 
         Returns:
@@ -437,42 +438,35 @@ class Fleet:
         return count
 
     def get_biggest_ship_by_deployed_status(self, is_deployed: bool = False) \
-            -> Union[str, int, None]:
+            -> Union[Ship, None]:
         """
-        Get the name and size of the biggest ship in the fleet based on the
-        deployed status.
+        Get the biggest ship in the fleet based on the deployed status.
 
         Parameters:
             is_deployed (bool, optional): Whether to consider deployed ships.
                 Default is False, which considers not-deployed ships.
 
         Returns:
-            Union[str, int, None]: Returns a tuple containing the name and size
-                of the biggest deployed ship if found; returns None if no
-                deployed ships are found.
+            Union[Ship, None]: Returns the biggest deployed ship object if
+            found;
+            returns None if no deployed ships are found.
 
         This function iterates through the ships in the fleet, considering only
         the deployed or not-deployed ships based on the `is_deployed`
         parameter.
         It calculates the size of each ship and keeps track of the biggest one.
-        If a deployed ship is found, it returns a tuple containing the name and
-        size of that ship; otherwise, it returns None.
+        If a deployed ship is found, it returns the entire Ship object;
+        otherwise, it returns None.
         """
         biggest_ship = None
         biggest_size = 0
 
         for ship in self.ships:
-            # Check if the ship matches the deployed status
-            if ship.deployed == is_deployed:
-                # If the ship is bigger than the current biggest, update it
-                if ship.size > biggest_size:
-                    biggest_ship = ship
-                    biggest_size = biggest_ship.size
+            if ship.deployed == is_deployed and ship.size > biggest_size:
+                biggest_ship = ship
+                biggest_size = ship.size
 
-        if biggest_ship:
-            return biggest_ship
-        else:
-            return None
+        return biggest_ship
 
     def __str__(self) -> str:
         """
@@ -638,70 +632,234 @@ def find_max_label_length(map_size: int,
 
 
 def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
-                   label_left: str, label_right: str, row_index_label,
-                   column_index_label, gap: int = 10) -> None:
+                   label_left: str, label_right: str,
+                   row_index_label: List[str], column_index_label: List[str],
+                   gap: int = 10) -> None:
     """
     Print two 2D maps side-by-side with dynamically centered labels and a
     customizable gap.
 
+    This function prints two 2D maps with labels, column headers,
+    and a separator line.
+    The function relies on several helper functions to modularize the task
+    of printing each component.
+
     Args:
-        map_left : A 2D list representing the first map.
-        map_right: A 2D list representing the second map.
-        label_left: Label for the first map.
-        label_right: Label for the second map.
-        row_index_label: Label indicating row index of the map
-        column_index_label: Label indicating column index of the map
+        map_left (List[List[str]]): A 2D list representing the first map.
+        map_right (List[List[str]]): A 2D list representing the second map.
+        label_left (str): Label for the first map.
+        label_right (str): Label for the second map.
+        row_index_label (List[str]): List of row index labels.
+        column_index_label (List[str]): List of column index labels.
+        gap (int, optional): Number of blank spaces between the two maps.
+        Default is 10.
 
-        gap: Number of blank spaces between the two maps. Default is 10.
+    Returns:
+        None: This function prints the maps to the console and returns None.
+
+    Example:
+        map1 = [["-", "-", "-"], ["-", "-", "-"], ["-", "-", "-"]]
+        map2 = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]]
+        print_two_maps(map1, map2, "Map 1", "Map 2", [0, 1, 2], [0, 1, 2],
+        gap=5)
     """
-
     # Constants for character dimensions and formatting
     char_width = len("X")
+    gap_str = ' ' * gap
 
-    # Calculate the maximum number of digits in row and column indexes
+    # Calculate the maximum number of digits for row and column indexes
     num_digits_map_width = find_max_label_length(len(map_left[0]),
                                                  column_index_label)
     num_digits_map_height = find_max_label_length(len(map_left),
                                                   row_index_label)
-
-    # Create a string of blank spaces for the gap between maps
-    gap_str = ' ' * gap
 
     # Calculate the left-side offset for aligning map and row indexes
     row_index_separator = " | "
     print_map_left_offset = " " * (
             num_digits_map_height + len(row_index_separator))
 
-    # Center-align the labels for both maps
-    number_char_table_total = len(map_left[0]) * (
+    # Print labels
+    print_labels(print_map_left_offset, label_left, label_right,
+                 num_digits_map_width, char_width, gap_str)
+
+    # Print column headers
+    print_column_headers(print_map_left_offset, map_left, map_right,
+                         column_index_label, num_digits_map_width, char_width,
+                         gap_str)
+
+    # Print the separator line
+    print_separator(print_map_left_offset, map_left, map_right,
+                    num_digits_map_width, char_width, gap_str)
+
+    # Print map values
+    print_map_values(map_left, map_right, row_index_label,
+                     num_digits_map_width, num_digits_map_height, char_width,
+                     row_index_separator, gap_str)
+
+
+def print_labels(offset: str, label_left: str, label_right: str,
+                 num_digits_map_width: int, char_width: int, gap_str: str) \
+        -> None:
+    """
+    Print the centered labels for both maps.
+
+    This function takes care of printing the labels for the two maps,
+    ensuring that they are centered
+    above each respective map. The centering takes into account the width of
+    each cell and the number of columns.
+
+    Args:
+        offset (str): The left-side offset for aligning map and row indexes.
+        label_left (str): Label for the first map.
+        label_right (str): Label for the second map.
+        num_digits_map_width (int): Maximum number of digits for columns.
+        char_width (int): Width of each character in the map.
+        gap_str (str): String of blank spaces for the gap between maps.
+
+    Returns:
+        None: This function prints the labels to the console and returns None.
+
+    Example:
+        print_labels("  | ", "Map 1", "Map 2", 2, 1, "    ")
+
+    Note:
+        The function calculates the total character width of the table based
+        on the labels and uses this information for centering.
+    """
+    # Calculate the total character width of the table based on the labels
+    number_char_table_total = len(label_left) * (
             num_digits_map_width + char_width + 1)
+
+    # Center-align the labels based on the calculated width
     label_left_centered = label_left.center(number_char_table_total)
     label_right_centered = label_right.center(number_char_table_total)
 
-    # Print the centered labels for both maps
-    print(f"{print_map_left_offset}{label_left_centered}{gap_str}"
-          f"{print_map_left_offset}{label_right_centered}")
+    # Print the centered labels
+    print(
+        f"{offset}{label_left_centered}{gap_str}"
+        f"{offset}{label_right_centered}")
 
-    # Print column headers for both maps
-    print(print_map_left_offset, end=" ")
+
+def print_column_headers(offset: str,map_left: List[List[str]], map_right:
+    List[List[str]], column_index_label: List[str], num_digits_map_width:
+    int, char_width: int, gap_str: str) -> None:
+    """
+    Print the column headers for both maps.
+
+    This function prints the column headers (usually numerical or 
+    alphabetical indices)
+    for both the left and right maps. The column headers are aligned to the 
+    right
+    in each cell to ensure that they line up neatly with the map data.
+
+    Args:
+        offset (str): The left-side offset for aligning map and row indexes.
+        map_left (List[List[str]]): A 2D list representing the first map.
+        map_right (List[List[str]]): A 2D list representing the second map.
+        column_index_label (List[str]): List of labels for column headers.
+        num_digits_map_width (int): Maximum number of digits for columns.
+        char_width (int): Width of each character in the map.
+        gap_str (str): String of blank spaces for the gap between maps.
+
+    Returns:
+        None: This function prints the column headers to the console and
+        returns None.
+
+    Example:
+        print_column_headers("  | ", [['~']*5]*5, [['~']*5]*5, ['0', '1',
+        '2', '3', '4'], 1, 1, "    ")
+
+    Note:
+        The function uses Python's built-in string method `rjust` to
+        right-align the column headers within each cell.
+    """
+
+    print(offset, end=" ")
     for col_index in range(len(map_left[0])):
-        print(str(column_index_label[col_index]).rjust(num_digits_map_width +
-                                                       char_width), end=" ")
-    print(gap_str, print_map_left_offset, end="")
+        print(str(column_index_label[col_index]).rjust(
+            num_digits_map_width + char_width), end=" ")
+    print(gap_str, end="")
     for col_index in range(len(map_right[0])):
         print(str(column_index_label[col_index]).rjust(
             num_digits_map_width + char_width), end=" ")
     print()
 
-    # Print the horizontal separator line
+
+def print_separator(offset: str, map_left: List[List[str]], map_right: List[
+    List[str]], num_digits_map_width: int, char_width: int, gap_str: str) ->\
+        None:
+    """
+    Print the horizontal separator line for both maps.
+
+    This function prints a horizontal line of equal signs ('=') beneath the
+    column headers of both maps. The line acts as a separator between the
+    column headers and the map data.
+
+    Args:
+        offset (str): The left-side offset for aligning map and row indexes.
+        map_left (List[List[str]]): A 2D list representing the first map.
+        map_right (List[List[str]]): A 2D list representing the second map.
+        num_digits_map_width (int): Maximum number of digits for columns.
+        char_width (int): Width of each character in the map.
+        gap_str (str): String of blank spaces for the gap between maps.
+
+    Returns:
+        None: This function prints the separator lines to the console and
+        returns None.
+
+    Example:
+        print_separator("  | ", [['~']*5]*5, [['~']*5]*5, 1, 1, "    ")
+
+    Note:
+        The function calculates the length of the separator line based on the
+        number of columns in the map, the maximum number of digits for columns,
+        and the width of each character in the map. It then prints this line
+        for both maps.
+    """
+
     separator_length_left = len(map_left[0]) * (
             num_digits_map_width + char_width + 1)
     separator_length_right = len(map_right[0]) * (
             num_digits_map_width + char_width + 1)
-    print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
-    print(" " + print_map_left_offset + "=" * separator_length_right)
+    print(offset + "=" * separator_length_left, end=gap_str)
+    print(" " + offset + "=" * separator_length_right)
 
-    # Loop through each row to print map values
+
+def print_map_values(map_left: List[List[str]], map_right: List[List[str]],
+                     row_index_label: List[int], num_digits_map_width: int,
+                     num_digits_map_height: int, char_width: int,
+                     row_index_separator: str, gap_str: str) -> None:
+    """
+    Loop through each row to print map values for both maps side by side.
+
+    This function iterates through the rows of the two given 2D maps and prints
+    the values in a formatted manner. The printed maps are separated by a gap,
+    and each map has its own row and column labels.
+
+    Args:
+        map_left (List[List[str]]): A 2D list representing the first map.
+        map_right (List[List[str]]): A 2D list representing the second map.
+        row_index_label (List[int]): List of row index labels.
+        num_digits_map_width (int): Maximum number of digits for columns.
+        num_digits_map_height (int): Maximum number of digits for rows.
+        char_width (int): Width of each character in the map.
+        row_index_separator (str): Separator between row index and map values.
+        gap_str (str): String of blank spaces for the gap between maps.
+
+    Returns:
+        None: This function prints the map values to the console and returns None.
+
+    Example:
+        print_map_values("  | ", [['~']*5]*5, [['~']*5]*5, [0, 1, 2, 3, 4],
+        [0, 1, 2, 3, 4], 1, 1, 1, " | ", "    ")
+
+    Note:
+        The function dynamically adjusts the spacing for each cell value based
+        on the maximum number of digits for rows and columns, as well as the
+        character width, to ensure proper alignment. It prints each value using
+        the Python `rjust()` method for right-justified formatting.
+    """
+
     for row_index, (row_left, row_right) in enumerate(
             zip(map_left, map_right)):
         print(str(row_index_label[row_index]).rjust(num_digits_map_height + 1),
@@ -786,7 +944,8 @@ def cpu_deploy_all_ships(map_game, fleet):
     """
     while True:
         try:
-            # Get information about the biggest undeployed ship from the fleet
+            # Get information about the biggest not deployed ship from the
+            # fleet
             ship_obj = fleet.get_biggest_ship_by_deployed_status(False)
 
             if ship_obj is None:
@@ -794,8 +953,6 @@ def cpu_deploy_all_ships(map_game, fleet):
                 return True  # Deployment is complete
             else:
                 ship_size = ship_obj.size
-                ship_name = ship_obj.name
-                print("tomosius biggest ship", ship_size, ship_name)
 
                 # Attempt to deploy the ship and get alignment and coordinates
                 return_result = cpu_deploy_single_ship(map_game, ship_size)
@@ -823,7 +980,6 @@ def cpu_deploy_all_ships(map_game, fleet):
             print("An error occurred:", str(e))
             return False  # Return False on error
 
-    return True  # Return True if deployment is successful
 
 
 def map_show_symbols(map_game: List[List[str]], coordinates_list: List[
@@ -899,7 +1055,7 @@ def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
     return_result = cpu_deploy_get_coordinates(map_game, ship_size)
 
     # Check if coordinates are found
-    if return_result == False:
+    if not return_result:
         return False  # No coordinates found, return False
 
     # Coordinates found, proceed with deployment
@@ -919,8 +1075,24 @@ def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
         return alignment, ship_coordinate_list
 
 
-from typing import List, Tuple, Union
-from random import choice
+def search_coordinates(map_game: List[List[str]], ship_size: int,
+                       alignment: str) -> Union[List[Tuple[int, int]], None]:
+    """
+    Search for suitable coordinates based on a given alignment.
+
+    Args:
+        map_game (List[List[str]]): The 2D game map.
+        ship_size (int): The size of the ship.
+        alignment (str): The alignment ("Horizontal" or "Vertical").
+
+    Returns:
+        List[Tuple[int, int]] or None: A list of coordinates if found, otherwise None.
+    """
+    if alignment == "Vertical":
+        return search_map_for_pattern(map_game, ship_size, 1)
+    elif alignment == "Horizontal":
+        return search_map_for_pattern(map_game, 1, ship_size)
+    return None
 
 
 def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
@@ -940,51 +1112,30 @@ def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
 
     This function performs the following key tasks:
         1. Determines the alignment of the ship based on its size.
-        2. Call the `search_map_for_pattern` function to find suitable
-        coordinates based on the alignment.
+        2. Calls the `search_map_for_pattern` function to find suitable
+           coordinates based on the alignment.
         3. If no suitable coordinates are found, it tries the other
-        alignment (from "Vertical" to "Horizontal" or vice versa).
+           alignment (from "Vertical" to "Horizontal" or vice versa).
 
     Note:
         - The function will return False if no suitable location is found
-        for deploying the ship.
+          for deploying the ship.
         - For a ship of size 1, the alignment will be "Single".
     """
-
-    # Determine alignment based on ship size
     if ship_size == 1:
         alignment = "Single"
-        # Search for a single empty cell on the map
         result = search_map_for_pattern(map_game, 1, 1)
         if not result:
             return False  # Abort if no suitable location is found
+        return alignment, result
 
-    else:
-        # Randomly choose alignment for multi-cell ships
-        alignment = choice(["Horizontal", "Vertical"])
+    # Loop through possible alignments to find suitable coordinates
+    for alignment in ["Horizontal", "Vertical"]:
+        result = search_coordinates(map_game, ship_size, alignment)
+        if result:
+            return alignment, result  # Return alignment and coordinates if found
 
-        # Search for a suitable location based on the chosen alignment
-        if alignment == "Vertical":
-            result = search_map_for_pattern(map_game, ship_size, 1)
-            # If no suitable location is found in vertical alignment,
-            # try horizontal
-            if not result:
-                alignment = "Horizontal"
-                result = search_map_for_pattern(map_game, 1, ship_size)
-                if not result:
-                    return False  # Abort if no suitable location is found
-
-        elif alignment == "Horizontal":
-            result = search_map_for_pattern(map_game, 1, ship_size)
-            # If no suitable location is found in horizontal alignment,
-            # try vertical
-            if not result:
-                alignment = "Vertical"
-                result = search_map_for_pattern(map_game, ship_size, 1)
-                if not result:
-                    return False  # Abort if no suitable location is found
-
-    return alignment, result
+    return False  # Return False if no suitable coordinates are found
 
 
 def search_map_for_pattern(map_game, height, width):
@@ -1047,8 +1198,8 @@ def search_map_for_pattern(map_game, height, width):
 # Various helping functions
 # ------------------------------
 
-def create_coordinate_list(row: int, column: int, alignment: str, ship_size:
-int) -> List:
+def create_coordinate_list(row: int, column: int, alignment: str,
+                           ship_size: int) -> List:
     """
     Create a list of coordinates where the ship will be placed on the map.
 
