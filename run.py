@@ -15,22 +15,23 @@ from collections import defaultdict
 
 # Constants for map dimensions and default symbol
 # DEFAULT_MAP_SETTINGS consist of 4 values:
-# 1. Map Height - number of rows
-# 2. Map Width - number of columns
-# 3. Default symbol displayed on map, o prefer ? - as it is unknown what is
+# 0. Map Height - number of rows
+# 1. Map Width - number of columns
+# 2. Default symbol displayed on map, o prefer ? - as it is unknown what is
 # hiding there
-# 4. Gaps - gabes between ships, default value = True
-DEFAULT_MAP_SETTINGS = [10,10,"?",True]
-
-# DEFAULT_COORDINATE_STYLE consist of 2 lists:
-# 1st: default input output style, row - column, player can change it in
+# 3. Gaps - gabes between ships, default value = True
+# 4. default input output style, row - column, player can change it in
 # settings to be column - row
-# 2nd: Row and column indexes labels, player can change it to letters
-DEFAULT_COORDINATES_STYLE = [["Column", "Row"],
-                             [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                               14, 15, 16, 17, 18, 19],
-                              [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                               14, 15, 16, 17, 18, 19]]]
+# 5. List of:
+# 5.0. Row index labels
+# 5.1. Column index labels
+DEFAULT_MAP_SETTINGS = [10,
+                        10,
+                        "?",
+                        True,
+                        ["Column", "Row"],
+                        [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]]
 
 # ANSI color codes used for visual representation of different ship statuses
 DEFAULT_COLORS: Dict[str, str] = {
@@ -551,13 +552,13 @@ class Fleet:
         for info in ship_info_list:
             info['sunk_qty'] = sum(ship.sunk for ship in self.ships if ship.name == info['name'])
 
-    def format_coordinates(self, coordinates, game_coordinate_style):
+    def format_coordinates(self, coordinates, game_map_settings):
         """
         Format the coordinates according to the game's coordinate style.
 
         Parameters:
             coordinates (List[tuple]): List of coordinates.
-            game_coordinate_style (List): The game's coordinate style.
+            game_map_settings (List): The game's map style.
 
         Returns:
             List[str]: List of formatted coordinates.
@@ -566,36 +567,36 @@ class Fleet:
         for coord_set in coordinates:
             formatted_set = []
             for (row, col) in coord_set:
-                row_label = game_coordinate_style[1][0][row]
-                col_label = game_coordinate_style[1][1][col]
-                if game_coordinate_style[0] == ["Row", "Column"]:
+                row_label = game_map_settings[5][0][row]
+                col_label = game_map_settings[5][1][col]
+                if game_map_settings[4] == ["Row", "Column"]:
                     formatted_set.append(f"({row_label},{col_label})")
                 else:
                     formatted_set.append(f"({col_label},{row_label})")
             formatted_coordinates.append(' '.join(formatted_set))
         return formatted_coordinates
 
-    def add_coordinates_condition(self, ship_info_list, condition, game_coordinate_style):
+    def add_coordinates_condition(self, ship_info_list, condition, game_map_settings):
         """
         Add coordinates condition to the ship information list.
 
         Parameters:
             ship_info_list (List[dict]): The list containing ship information.
             condition (str): The condition to filter the coordinates.
-            game_coordinate_style (List): The game's coordinate style.
+            game_map_settings (List): The game's coordinate style.
         """
         for info in ship_info_list:
             coordinates = [ship.cell_coordinates for ship in self.ships if
                            ship.name == info['name'] and getattr(ship, condition.split('_')[0])]
-            info[condition] = self.format_coordinates(coordinates, game_coordinate_style)
+            info[condition] = self.format_coordinates(coordinates, game_map_settings)
 
-    def print_fleet(self, conditions=[], game_coordinate_style=None):
+    def print_fleet(self, conditions=[], game_map_settings=None):
         """
         Print the fleet information based on given conditions.
 
         Parameters:
             conditions (List[str], optional): List of conditions to filter the information.
-            game_coordinate_style (List, optional): The game's coordinate style.
+            game_map_settings (List, optional): The game's coordinate style.
         """
         ship_info_list = self.gather_basic_info()
 
@@ -604,9 +605,9 @@ class Fleet:
             'deployed_qty': self.add_deployed_qty,
             'sunk_qty': self.add_sunk_qty,
             'deployed_coordinates': lambda ship_info:
-            self.add_coordinates_condition(ship_info, 'deployed_coordinates', game_coordinate_style),
+            self.add_coordinates_condition(ship_info, 'deployed_coordinates', game_map_settings),
             'sunk_coordinates': lambda ship_info:
-            self.add_coordinates_condition(ship_info, 'sunk_coordinates', game_coordinate_style)
+            self.add_coordinates_condition(ship_info, 'sunk_coordinates', game_map_settings)
         }
 
         # Apply each condition function to ship_info_list
@@ -643,15 +644,18 @@ class Fleet:
         Print the coordinates for each ship based on the given conditions.
 
         Parameters:
-            conditions (List[str]): List of conditions to filter the information.
-                Expected to contain 'deployed_coordinates' and/or 'sunk_coordinates'.
-            info (Dict[str, any]): Dictionary containing ship information including
-                'deployed_coordinates' and 'sunk_coordinates' if they exist.
+            conditions (List[str]): List of conditions to filter the
+            information. Expected to contain 'deployed_coordinates' and/or
+            'sunk_coordinates'.
+            info (Dict[str, any]): Dictionary containing ship information
+            including 'deployed_coordinates' and 'sunk_coordinates' if they
+            exist.
 
-        This function is intended to be called within `print_fleet` after printing
-        the basic ship information. It prints the coordinates for each ship that
-        match the specified conditions in the `conditions` list. The coordinates
-        are printed as additional lines below each ship's basic information.
+        This function is intended to be called within `print_fleet` after
+        printing the basic ship information. It prints the coordinates for
+        each ship that match the specified conditions in the `conditions`
+        list. The coordinates are printed as additional lines below each
+        ship's basic information.
         """
         for condition in conditions:
             if 'coordinates' in condition:
@@ -720,43 +724,6 @@ def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
     return [[symbol for _ in range(height)] for _ in range(width)]
 
 
-def print_map(map_game):
-    """
-    Print the game map in a human-readable format.
-
-    Args:
-        map_game (list): A 2D list representing the game map,
-                         where each cell contains the status of a ship
-                         or water.
-
-    Output:
-        The function will print the game map to the console.
-    """
-    # Global variables for row and column indexes
-    global DEFAULT_COORDINATES_STYLE
-
-    # Print column headers (0, 1, 2, ..., N)
-    print("   ", end="")
-    for col_index in range(len(map_game[0])):
-        print(f"{DEFAULT_COORDINATES_STYLE[1][0][col_index]}  ", end="")
-
-    # Print a separator line between headers and table
-    print("\n   " + "=" * (len(map_game[0]) * 3))
-
-    # Loop through each row
-    for row_index, row in enumerate(map_game):
-        # Print row header
-        print(f"{DEFAULT_COORDINATES_STYLE[1][1][row_index]} |", end=" ")
-
-        # Loop through each cell in the row
-        for value in row:
-            # Print the cell value followed by two spaces
-            print(f"{value}  ", end="")
-
-        # Move to the next line at the end of each row
-        print()
-
-
 def find_max_label_length(map_size: int,
                           index_label: List[Union[int, str]]) -> int:
     """
@@ -786,8 +753,8 @@ def find_max_label_length(map_size: int,
 
 
 def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
-                   label_left: str, label_right: str, row_index_label,
-                   column_index_label, gap: int = 10) -> None:
+                   label_left: str, label_right: str, game_map_settings,
+                   gap = 10) -> None:
     """
     Print two 2D maps side-by-side with dynamically centered labels and a
     customizable gap.
@@ -805,6 +772,8 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
 
     # Constants for character dimensions and formatting
     char_width = len("X")
+    row_index_label = game_map_settings[5][0]
+    column_index_label = game_map_settings[5][1]
 
     # Calculate the maximum number of digits in row and column indexes
     num_digits_map_width = find_max_label_length(len(map_left[0]),
@@ -945,6 +914,7 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
                 return True  # Deployment is complete
             else:
                 ship_size = ship_obj.size
+                ic(ship_size)
 
                 # Attempt to deploy the ship and get alignment and coordinates
                 return_result = cpu_deploy_single_ship(map_game, ship_size)
@@ -971,7 +941,6 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
 
             map_game = map_show_symbols(map_game, coordinates_list,
                                         symbols_list)
-            print_map(map_game)
             print(fleet)
 
         except Exception as e:
@@ -1298,12 +1267,15 @@ def map_allocate_empty_space_for_ship(map_game: List[List[str]],
 # The code below for testing purposes
 # -------------------------------
 
+game_map_settings = DEFAULT_MAP_SETTINGS
 
-map_cpu_hidden = create_map(13, 13,
-                            DEFAULT_MAP_SETTINGS[2])
-map_cpu_display = create_map(13, 13,
-                             DEFAULT_MAP_SETTINGS[2])
+map_cpu_hidden = create_map(10, 10,
+                            game_map_settings[2])
+map_cpu_display = create_map(10, 10,
+                             game_map_settings[2])
 fleet_cpu = create_default_fleet()
+
+
 print(fleet_cpu)
 
 cpu_deploy_all_ships(map_cpu_display, fleet_cpu)
@@ -1311,9 +1283,7 @@ cpu_deploy_all_ships(map_cpu_display, fleet_cpu)
 print(fleet_cpu)
 
 print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
-               DEFAULT_COORDINATES_STYLE[1][0], DEFAULT_COORDINATES_STYLE[
-                   1][1], 10)
+               game_map_settings, 10)
 
-game_coordinates_style = DEFAULT_COORDINATES_STYLE
-fleet_cpu.print_fleet(["deployed_qty"],
-                      game_coordinates_style)
+fleet_cpu.print_fleet(["deployed_qty", "deployed_coordinates"],
+                      game_map_settings)
