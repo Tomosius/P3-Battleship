@@ -19,10 +19,15 @@ DEFAULT_MAP_WIDTH = 10
 DEFAULT_SYMBOL = '?'  # Symbol representing an empty cell in the map
 DEFAULT_GAPS_BETWEEN_MAPS = True
 
-DEFAULT_MAP_ROW_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-                           15, 16, 17, 18, 19]
-DEFAULT_MAP_COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-                              15, 16, 17, 18, 19]
+# DEFAULT_COORDINATE_STYLE consist of 2 lists:
+# 1st: default input output style, row - column, player can change it in 
+# settings to be column - row 
+# 2nd: Row and column indexe labels, player can change it to letters
+DEFAULT_COORDINATES_STYLE = [["Row", "Column"],
+                             [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                               14, 15, 16, 17, 18, 19],
+                              [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                               14, 15, 16, 17, 18, 19]]]
 
 # ANSI color codes used for visual representation of different ship statuses
 DEFAULT_COLORS: Dict[str, str] = {
@@ -360,7 +365,7 @@ class Fleet:
                 return True
         return False
 
-    def get_ship(self, name: str, is_deployed: bool = False)\
+    def get_ship(self, name: str, is_deployed: bool = False) \
             -> Union[Ship, None]:
         """
         Retrieve a Ship object from the fleet by its name and deployment
@@ -504,7 +509,6 @@ class Fleet:
         # Return the fully constructed output string.
         return output
 
-
     def print_fleet_table(self, status_filter: str = None) -> None:
         """
         Print the fleet information as a table.
@@ -515,8 +519,9 @@ class Fleet:
                 Default is None, which shows all ships.
         """
 
-        # Step 1: Initialize a defaultdict to hold ship information
-        ship_info = defaultdict(lambda: {"size": 0, "qty": 0, "sunk_qty": 0, "deployed_qty": 0})
+        # Step 1: Initialize a default-dict to hold ship information
+        ship_info = defaultdict(
+            lambda: {"size": 0, "qty": 0, "sunk_qty": 0, "deployed_qty": 0})
 
         # Variable to check if any ship matches the status filter
         any_ship_matches_filter = False
@@ -543,9 +548,11 @@ class Fleet:
 
         # Step 3: Print the table header
         header = ['Name', 'Size', 'Qty']
-        if status_filter == "sunk" or (status_filter is None and any_ship_matches_filter):
+        if status_filter == "sunk" or (
+                status_filter is None and any_ship_matches_filter):
             header.append('Sunk Qty')
-        if status_filter == "deployed" or (status_filter is None and any_ship_matches_filter):
+        if status_filter == "deployed" or (
+                status_filter is None and any_ship_matches_filter):
             header.append('Deployed Qty')
 
         print("{:<15}{:<10}{:<10}".format(*header[:3]), end="")
@@ -562,10 +569,6 @@ class Fleet:
             if 'Deployed Qty' in header:
                 print(f"{info['deployed_qty']:<10}", end="")
             print()
-
-
-
-
 
 
 def create_default_fleet() -> Fleet:
@@ -642,12 +645,12 @@ def print_map(map_game):
         The function will print the game map to the console.
     """
     # Global variables for row and column indexes
-    global DEFAULT_MAP_ROW_INDEXES, DEFAULT_MAP_COLUMN_INDEXES
+    global DEFAULT_COORDINATES_STYLE
 
     # Print column headers (0, 1, 2, ..., N)
     print("   ", end="")
     for col_index in range(len(map_game[0])):
-        print(f"{DEFAULT_MAP_ROW_INDEXES[col_index]}  ", end="")
+        print(f"{DEFAULT_COORDINATES_STYLE[1][0][col_index]}  ", end="")
 
     # Print a separator line between headers and table
     print("\n   " + "=" * (len(map_game[0]) * 3))
@@ -655,7 +658,7 @@ def print_map(map_game):
     # Loop through each row
     for row_index, row in enumerate(map_game):
         # Print row header
-        print(f"{DEFAULT_MAP_COLUMN_INDEXES[row_index]} |", end=" ")
+        print(f"{DEFAULT_COORDINATES_STYLE[1][1][row_index]} |", end=" ")
 
         # Loop through each cell in the row
         for value in row:
@@ -826,7 +829,7 @@ def map_calculate_max_dimensions(map_height: int, map_width: int, gap: int,
 # -----------------------
 
 
-def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps = True):
+def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
     """
     Deploy all CPU ships on the map.
 
@@ -875,8 +878,8 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps = True):
                 symbol = "x"
 
                 map_game = map_allocate_empty_space_for_ship(map_game,
-                                                             coordinates_list, symbol)
-
+                                                             coordinates_list,
+                                                             symbol)
 
             map_game = map_show_symbols(map_game, coordinates_list,
                                         symbols_list)
@@ -943,6 +946,7 @@ def map_allocate_empty_space_for_ship(map_game: List[List[str]],
         map_game (list): The 2D map where the ship will be deployed.
         coordinates_list (list): List of coordinates where the ship is
         located.
+        symbol (str) - symbol will be marking empty allocated are on map
 
     Global Variables:
         SHIP_SYMBOLS (dict): Dictionary containing ship symbols.
@@ -1092,7 +1096,7 @@ def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
         alignment = random.choice(["Vertical", "Horizontal"])
         if alignment == "Vertical":
             result = map_search_for_pattern(map_game, ship_size, 1)
-            if not result: # if nothing is found with vertical, we will try
+            if not result:  # if nothing is found with vertical, we will try
                 # horizontal
                 alignment = "Horizontal"
                 result = map_search_for_pattern(map_game, 1, ship_size)
@@ -1116,9 +1120,6 @@ def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
                     return alignment, result
             else:
                 return alignment, result
-
-
-
 
 
 def map_search_for_pattern(map_game, height, width):
@@ -1290,6 +1291,6 @@ cpu_deploy_all_ships(map_cpu_display, fleet_cpu)
 print(fleet_cpu)
 
 print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
-               DEFAULT_MAP_ROW_INDEXES, DEFAULT_MAP_COLUMN_INDEXES, 10)
+               DEFAULT_COORDINATES_STYLE[1][0], DEFAULT_COORDINATES_STYLE[1][1], 10)
 
 fleet_cpu.print_fleet_table()
