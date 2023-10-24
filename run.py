@@ -63,18 +63,17 @@ DEFAULT_SHIPS = [
 ]
 
 # Game instructions and settings, presented as lists
-INSTRUCTIONS = ["1. Ships can be aligned Horizontally or Vertically",
-                "2. Ships can NOT be touching each other, but this can be "
-                "changed in game settings",
+INSTRUCTIONS = ["1. Ships can be \u001b[34mHORIZONTAL\u001b[0m or \u001b[32mVERTICAL\u001b[0m",
+                "2. Ships can \u001b[31mNOT\u001b[0m be touching each other",
                 "3. Default game map is size 10 by 10",
-                "4. Player has to enter coordinates as follows: Y, X - ROW, "
-                "COLUMN. Numbers separated by COMMA",
-                "5. \u001b[34mHORIZONTAL\u001b[0m ships will be BLUE color",
-                "6. \u001b[32mVERTICAL\u001b[0m ships will be GREEN color",
-                "7. \u001b[31mDAMAGED\u001b[0m ships will be green color",
-                "If you want to adjust game settings type \u001b[33mY\u001b["
-                "0m and press ENTER",
-                "If you want to start game just press \u001b["
+                "4. Coordinate Entering style:",
+                "   Row, COMMA, Column",
+                "5. \u001b[31mDAMAGED\u001b[0m ships will be green color",
+                "",
+                "To adjust game settings type \u001b[33mY\u001b["
+                "0m",
+                "",
+                "To start game just press \u001b["
                 "33mENTER\u001b[0m"]
 
 # Commands dictionary
@@ -857,7 +856,58 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
         print()
 
 
-# Corrected function to include map_width and map_height in calculations
+def print_map_and_list(map_left: List[List[str]], instructions: List[str],
+                       label_left: str, label_instructions: str, game_map_settings,
+                       gap=10) -> None:
+    """
+    Print a 2D map on the left and a list of instructions on the right with
+    dynamically centered labels and a customizable gap.
+
+    Args:
+        map_left: A 2D list representing the map.
+        instructions: A list of strings representing the instructions.
+        label_left: Label for the map.
+        label_instructions: Label for the instructions.
+        game_map_settings: Game map settings including row and column index labels.
+        gap: Number of blank spaces between the map and instructions. Default is 10.
+    """
+    char_width = len("X")
+    row_index_label = game_map_settings[5][0]
+    column_index_label = game_map_settings[5][1]
+    num_digits_map_width = find_max_label_length(len(map_left[0]), column_index_label)
+    num_digits_map_height = find_max_label_length(len(map_left), row_index_label)
+    gap_str = ' ' * gap
+    row_index_separator = " | "
+    print_map_left_offset = " " * (num_digits_map_height + len(row_index_separator))
+    number_char_table_total = len(map_left[0]) * (num_digits_map_width + char_width + 1)
+    label_left_centered = label_left.center(number_char_table_total)
+    print(f"{print_map_left_offset}{label_left_centered}{gap_str}"
+          f"{print_map_left_offset}{label_instructions.center(40)}")
+    print(print_map_left_offset, end=" ")
+    for col_index in range(len(map_left[0])):
+        print(str(column_index_label[col_index]).rjust(num_digits_map_width + char_width), end=" ")
+    print(gap_str)
+    separator_length_left = len(map_left[0]) * (num_digits_map_width + char_width + 1)
+    print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
+    print("")
+    for row_index, row_left in enumerate(map_left):
+        print(str(row_index_label[row_index]).rjust(num_digits_map_height + 1),
+              end=row_index_separator)
+        for value in row_left:
+            width = len(str(value))
+            print(str(value).rjust(num_digits_map_width + char_width - (char_width - width)), end=" ")
+        print(gap_str, end="")
+        instruction = instructions[row_index] if row_index < len(instructions) else ''
+        print(instruction.ljust(40), end="")
+        print()
+    for row_index in range(len(map_left), len(instructions)):
+        print(" " * (num_digits_map_height + len(row_index_separator) +
+                     len(map_left[0]) * (num_digits_map_width + char_width + 1) +
+                     gap), end="")
+        print(instructions[row_index].ljust(40))
+
+
+
 def map_calculate_max_dimensions(map_height: int, map_width: int, gap: int,
                                  row_index_label: List[Union[int, str]],
                                  column_index_label: List[
@@ -1327,13 +1377,65 @@ wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
     clear_terminal()
 
 
+"""
+Game Instructions and settings
+------------------------------
+"""
+
+def game_insructions():
+    # Print Acid affect
+    #print_acid_effect()
+
+    # create game map settings just for current game session
+    global DEFAULT_MAP_SETTINGS
+    while True:
+        clear_terminal()
+        tmp_map, tmp_map_settings = tmp_ships_on_map(DEFAULT_MAP_SETTINGS)
+
+        print_map_and_list(tmp_map, INSTRUCTIONS, "Ships on Map", "Instructions", tmp_map_settings, 5)
+
+        try:
+            user_input = input()
+            if user_input.upper() in ["Y", "YES"]:
+                print("start game settings adjusment")
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False  # Return False to indicate interruption
+
+def tmp_ships_on_map(game_map_settings):
+    """
+    function to generate temporary fleet, ships and display them on map,
+    this is just nice feature, so every time there is fresh map with ships,
+    each time different patern of ships on map
+    :param game_map_settings:
+    :return:
+    """
+
+    game_fleet_settings = create_default_fleet()
+
+    map_game = create_map(10, 10,
+                                 game_map_settings[2])
+
+    map_game = cpu_deploy_all_ships(map_game, game_fleet_settings)
+    if not map_game:
+        print(" cpu can not deploy all ships, do not fit")
+        return False
+    else:
+        return  map_game, game_map_settings
+
+
+
+
+
+
+
+
+
 """Initial game start functions
 -----------------------------"""
 
 
-
-# Start Game Function:
-# --------------------
 
 def start_game():
     # Print Acid affect
@@ -1355,11 +1457,14 @@ def start_game():
         print(" cpu can not deploy all ships, do not fit")
         return False
 
+    print_map_and_list(map_cpu_display, INSTRUCTIONS, "Ships on Map", "Instructions", game_map_settings, 10)
 
-    print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
-               game_map_settings, 10)
+
+    #print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display", game_map_settings, 10)
 
     # game_fleet_settings.print_fleet(["deployed_qty", "deployed_coordinates"], game_map_settings)
 
 
-rezultatas = start_game()
+#rezultatas = start_game()
+
+game_insructions()
