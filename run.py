@@ -52,6 +52,31 @@ DEFAULT_SHIP_SYMBOLS: Dict[str, List[str]] = {
     "Miss": [chr(0x2022)]
 }
 
+DEFAULT_SHIPS = [
+    {"name": "AircraftCarrier", "size": 5, "qty": 1},
+    {"name": "Battleship", "size": 4, "qty": 1},
+    {"name": "Cruiser", "size": 3, "qty": 1},
+    {"name": "Submarine", "size": 3, "qty": 1},
+    {"name": "Destroyer", "size": 2, "qty": 2},
+    {"name": "Tug Boat", "size": 1, "qty": 4},
+
+]
+
+# Game instructions and settings, presented as lists
+INSTRUCTIONS = ["1. Ships can be aligned Horizontally or Vertically",
+                "2. Ships can NOT be touching each other, but this can be "
+                "changed in game settings",
+                "3. Default game map is size 10 by 10",
+                "4. Player has to enter coordinates as follows: Y, X - ROW, "
+                "COLUMN. Numbers separated by COMMA",
+                "5. \u001b[34mHORIZONTAL\u001b[0m ships will be BLUE color",
+                "6. \u001b[32mVERTICAL\u001b[0m ships will be GREEN color",
+                "7. \u001b[31mDAMAGED\u001b[0m ships will be green color",
+                "If you want to adjust game settings type \u001b[33mY\u001b["
+                "0m and press ENTER",
+                "If you want to start game just press \u001b["
+                "33mENTER\u001b[0m"]
+
 # Commands dictionary
 # -------------------
 
@@ -677,19 +702,12 @@ def create_default_fleet() -> Fleet:
     3. Iterates through the list of default ships,
     creating Ship objects and adding them to the fleet.
     """
+    global DEFAULT_SHIPS
     # Initialize an empty Fleet object
     fleet = Fleet()
 
     # Define a list of default ships with their names, sizes, and quantities
-    default_ships = [
-        {"name": "AircraftCarrier", "size": 5, "qty": 1},
-        {"name": "Battleship", "size": 4, "qty": 1},
-        {"name": "Cruiser", "size": 3, "qty": 1},
-        {"name": "Submarine", "size": 3, "qty": 1},
-        {"name": "Destroyer", "size": 2, "qty": 2},
-        {"name": "Tug Boat", "size": 1, "qty": 4},
-
-    ]
+    default_ships = DEFAULT_SHIPS
 
     # Iterate through the list of default ships
     for ship_info in default_ships:
@@ -808,7 +826,7 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
     for col_index in range(len(map_right[0])):
         print(str(column_index_label[col_index]).rjust(
             num_digits_map_width + char_width), end=" ")
-    print()
+    print("")
 
     # Print the horizontal separator line
     separator_length_left = len(map_left[0]) * (
@@ -911,10 +929,9 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
 
             if ship_obj is None:
                 # If no ships left to deploy, break the loop and return True
-                return True  # Deployment is complete
+                return map_game  # Deployment is complete
             else:
                 ship_size = ship_obj.size
-                ic(ship_size)
 
                 # Attempt to deploy the ship and get alignment and coordinates
                 return_result = cpu_deploy_single_ship(map_game, ship_size)
@@ -941,8 +958,6 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
 
             map_game = map_show_symbols(map_game, coordinates_list,
                                         symbols_list)
-            print(fleet)
-
         except Exception as e:
             # Handle exceptions if needed
             print("An error occurred:", str(e))
@@ -1264,26 +1279,87 @@ def map_allocate_empty_space_for_ship(map_game: List[List[str]],
     return map_game
 
 
-# The code below for testing purposes
-# -------------------------------
-
-game_map_settings = DEFAULT_MAP_SETTINGS
-
-map_cpu_hidden = create_map(10, 10,
-                            game_map_settings[2])
-map_cpu_display = create_map(10, 10,
-                             game_map_settings[2])
-fleet_cpu = create_default_fleet()
+"""Game Intro functions
+---------------------"""
 
 
-print(fleet_cpu)
+def print_acid_effect():
+    """
+    Prints a text art of an acid-like effect to the terminal.
 
-cpu_deploy_all_ships(map_cpu_display, fleet_cpu)
+    This function performs the following steps:
+    1. Clears the terminal screen for a clean start.
+    2. Prints each character of the `acid_text` string one by one with a
+    slight delay.
+    3. Waits for a short moment to let the user view the effect.
+    4. Clears the terminal screen again.
 
-print(fleet_cpu)
+    Note: The function uses the `os` and `time` modules.
+    """
+    # ASCII art representation of the acid effect
 
-print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
+    acid_logo = """
+                              _  |____________|  _
+                       _=====| | |            | | |==== _
+                 =====| |.---------------------------. | |====
+   <--------------------'   .  .  .  .  .  .  .  .   '--------------/
+     \\                                                             /
+      \\_______________________________________________WWS_________/
+  wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+   wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+
+    """
+
+    # Step 1: Clear the terminal
+    clear_terminal()
+
+    # Step 2: Print the text character by character
+    for char in acid_logo:
+        print(char, end='', flush=True)  # Using flush=True to force the
+        # output to be printed
+        time.sleep(0.005)  # Delay of 0.005 seconds for each character
+
+    # Step 3: Wait for a moment to let the user view the effect
+    time.sleep(1)
+
+    # Step 4: Clear the terminal again
+    clear_terminal()
+
+
+"""Initial game start functions
+-----------------------------"""
+
+
+
+# Start Game Function:
+# --------------------
+
+def start_game():
+    # Print Acid affect
+    #print_acid_effect()
+
+    # create game map settings just for current game session
+    global DEFAULT_MAP_SETTINGS
+    game_map_settings = DEFAULT_MAP_SETTINGS
+
+    game_fleet_settings = create_default_fleet()
+
+    map_cpu_hidden = create_map(10, 10,
+                                game_map_settings[2])
+    map_cpu_display = create_map(10, 10,
+                                 game_map_settings[2])
+
+    map_cpu_display = cpu_deploy_all_ships(map_cpu_display, game_fleet_settings)
+    if not map_cpu_display:
+        print(" cpu can not deploy all ships, do not fit")
+        return False
+
+
+    print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
                game_map_settings, 10)
 
-fleet_cpu.print_fleet(["deployed_qty", "deployed_coordinates"],
-                      game_map_settings)
+    # game_fleet_settings.print_fleet(["deployed_qty", "deployed_coordinates"], game_map_settings)
+
+
+rezultatas = start_game()
