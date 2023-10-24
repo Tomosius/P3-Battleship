@@ -618,7 +618,13 @@ class Fleet:
         # Print the table header
         print("{:<20}{:<10}{:<10}".format("Name", "Size", "Qty"), end="")
         for condition in conditions:
-            header = condition.split('_')[1][:3].upper()
+            if condition == 'deployed_qty':
+                header = 'Deployed QTY'
+            elif condition == 'sunk_qty':
+                header = 'Sunk QTY'
+            else:
+                header = condition.split('_')[1][:3].upper()
+
             print(f"{header:<10}", end="")
         print()
 
@@ -630,12 +636,27 @@ class Fleet:
                     print(f"{info.get(condition, 0):<10}", end="")
             print()
 
-            for condition in conditions:
-                if 'coordinates' in condition:
-                    for coord_str in info.get(condition, []):
-                        print(f"    {coord_str}")
+            self.fleet_print_coordinates(conditions, info)
 
+    def fleet_print_coordinates(self, conditions: List[str], info: Dict[str, any]) -> None:
+        """
+        Print the coordinates for each ship based on the given conditions.
 
+        Parameters:
+            conditions (List[str]): List of conditions to filter the information.
+                Expected to contain 'deployed_coordinates' and/or 'sunk_coordinates'.
+            info (Dict[str, any]): Dictionary containing ship information including
+                'deployed_coordinates' and 'sunk_coordinates' if they exist.
+
+        This function is intended to be called within `print_fleet` after printing
+        the basic ship information. It prints the coordinates for each ship that
+        match the specified conditions in the `conditions` list. The coordinates
+        are printed as additional lines below each ship's basic information.
+        """
+        for condition in conditions:
+            if 'coordinates' in condition:
+                for coord_str in info.get(condition, []):
+                    print(f"    {coord_str}")
 
 
 def create_default_fleet() -> Fleet:
@@ -1294,4 +1315,5 @@ print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
                    1][1], 10)
 
 game_coordinates_style = DEFAULT_COORDINATES_STYLE
-fleet_cpu.print_fleet([],game_coordinates_style)
+fleet_cpu.print_fleet(["deployed_qty"],
+                      game_coordinates_style)
