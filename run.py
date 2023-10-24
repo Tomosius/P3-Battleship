@@ -25,8 +25,8 @@ DEFAULT_MAP_SETTINGS = [10,10,"?",True]
 # DEFAULT_COORDINATE_STYLE consist of 2 lists:
 # 1st: default input output style, row - column, player can change it in
 # settings to be column - row
-# 2nd: Row and column indexe labels, player can change it to letters
-DEFAULT_COORDINATES_STYLE = [["Row", "Column"],
+# 2nd: Row and column indexes labels, player can change it to letters
+DEFAULT_COORDINATES_STYLE = [["Column", "Row"],
                              [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
                                14, 15, 16, 17, 18, 19],
                               [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
@@ -512,66 +512,77 @@ class Fleet:
         # Return the fully constructed output string.
         return output
 
-    def print_fleet_table(self, status_filter: str = None) -> None:
-        """
-        Print the fleet information as a table.
+    def __init__(self):
+        self.ships = []  # Placeholder, assuming you have a Ship class
 
-        Parameters:
-            status_filter (str, optional): The status to filter the ships by
-            ("sunk" or "deployed").
-                Default is None, which shows all ships.
-        """
-
-        # Step 1: Initialize a default-dict to hold ship information
-        ship_info = defaultdict(
-            lambda: {"size": 0, "qty": 0, "sunk_qty": 0, "deployed_qty": 0})
-
-        # Variable to check if any ship matches the status filter
-        any_ship_matches_filter = False
-
-        # Step 2: Collect ship information
+    def gather_basic_info(self):
+        ship_info = {}
         for ship in self.ships:
-            key = ship.name
-            ship_info[key]["size"] = ship.size
+            name = ship.name
+            if name not in ship_info:
+                ship_info[name] = {"name": name, "size": ship.size, "qty": 0}
+            ship_info[name]["qty"] += 1
+        return [info for info in ship_info.values()]
 
-            if status_filter == "sunk" and ship.sunk:
-                any_ship_matches_filter = True
-                ship_info[key]["sunk_qty"] += 1
+    def add_deployed_qty(self, ship_info_list):
+        for info in ship_info_list:
+            info['deployed_qty'] = sum(ship.deployed for ship in self.ships if ship.name == info['name'])
 
-            elif status_filter == "deployed" and ship.deployed:
-                any_ship_matches_filter = True
-                ship_info[key]["deployed_qty"] += 1
+    def add_sunk_qty(self, ship_info_list):
+        for info in ship_info_list:
+            info['sunk_qty'] = sum(ship.sunk for ship in self.ships if ship.name == info['name'])
 
-            elif status_filter is None:
-                ship_info[key]["qty"] += 1
-                if ship.sunk:
-                    ship_info[key]["sunk_qty"] += 1
-                if ship.deployed:
-                    ship_info[key]["deployed_qty"] += 1
+    def format_coordinates(self, coordinates, game_coordinate_style):
+        formatted_coordinates = []
+        for coord_set in coordinates:
+            formatted_set = []
+            for (row, col) in coord_set:
+                row_label = game_coordinate_style[1][0][row]
+                col_label = game_coordinate_style[1][1][col]
+                if game_coordinate_style[0] == ["Row", "Column"]:
+                    formatted_set.append(f"({row_label},{col_label})")
+                else:
+                    formatted_set.append(f"({col_label},{row_label})")
+            formatted_coordinates.append(' '.join(formatted_set))
+        return formatted_coordinates
 
-        # Step 3: Print the table header
-        header = ['Name', 'Size', 'Qty']
-        if status_filter == "sunk" or (
-                status_filter is None and any_ship_matches_filter):
-            header.append('Sunk Qty')
-        if status_filter == "deployed" or (
-                status_filter is None and any_ship_matches_filter):
-            header.append('Deployed Qty')
+    def add_coordinates_condition(self, ship_info_list, condition, game_coordinate_style):
+        for info in ship_info_list:
+            coordinates = [ship.cell_coordinates for ship in self.ships if ship.name == info['name'] and getattr(ship, condition.split('_')[0])]
+            info[condition] = self.format_coordinates(coordinates, game_coordinate_style)
 
-        print("{:<15}{:<10}{:<10}".format(*header[:3]), end="")
-        if len(header) > 3:
-            for extra_header in header[3:]:
-                print("{:<10}".format(extra_header), end="")
+    def print_fleet(self, conditions=[], game_coordinate_style=None):
+        ship_info_list = self.gather_basic_info()
+
+        if 'deployed_qty' in conditions:
+            self.add_deployed_qty(ship_info_list)
+        if 'sunk_qty' in conditions:
+            self.add_sunk_qty(ship_info_list)
+        if 'deployed_coordinates' in conditions:
+            self.add_coordinates_condition(ship_info_list, 'deployed_coordinates', game_coordinate_style)
+        if 'sunk_coordinates' in conditions:
+            self.add_coordinates_condition(ship_info_list, 'sunk_coordinates', game_coordinate_style)
+
+        # Printing the table
+        print("{:<6}{:<5}{:<4}".format("Name", "Size", "Qty"), end="")
+        for condition in conditions:
+            header = condition.split('_')[1][:3].upper()
+            print(f"{header:<4}", end="")
         print()
 
-        # Step 4: Print the ship information
-        for name, info in ship_info.items():
-            print(f"{name:<15}{info['size']:<10}{info['qty']:<10}", end="")
-            if 'Sunk Qty' in header:
-                print(f"{info['sunk_qty']:<10}", end="")
-            if 'Deployed Qty' in header:
-                print(f"{info['deployed_qty']:<10}", end="")
+        for info in ship_info_list:
+            print(f"{info['name']:<6}{info['size']:<5}{info['qty']:<4}", end="")
+            for condition in conditions:
+                if 'coordinates' not in condition:
+                    print(f"{info.get(condition, 0):<4}", end="")
             print()
+
+            for condition in conditions:
+                if 'coordinates' in condition:
+                    for coord_str in info.get(condition, []):
+                        print(f"    {coord_str}")
+
+
 
 
 def create_default_fleet() -> Fleet:
@@ -1012,8 +1023,10 @@ def search_coordinates(map_game: List[List[str]], ship_size: int,
     return None
 
 
-def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
-        Union[Tuple[str, List[Tuple[int, int]]], bool]:
+def cpu_deploy_get_coordinates(
+        map_game: List[List[str]],
+        ship_size: int
+) -> Union[Tuple[str, List[Tuple[int, int]]], bool]:
     """
     Determine suitable coordinates for deploying a single ship on the game map.
 
@@ -1026,53 +1039,34 @@ def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
         the alignment ("Horizontal", "Vertical", or "Single") and a list of
         suitable coordinates for deploying the ship. Returns False if no
         suitable coordinates are found.
-
-    This function performs the following key tasks:
-        1. Determines the alignment of the ship based on its size.
-        2. Calls the `search_map_for_pattern` function to find suitable
-           coordinates based on the alignment.
-        3. If no suitable coordinates are found, it tries the other
-           alignment (from "Vertical" to "Horizontal" or vice versa).
-
-    Note:
-        - The function will return False if no suitable location is found
-          for deploying the ship.
-        - For a ship of size 1, the alignment will be "Single".
     """
+    # Case for ship of size 1
     if ship_size == 1:
-        alignment = "Single"
         result = map_search_for_pattern(map_game, 1, 1)
         if not result:
-            return False  # Abort if no suitable location is found
+            return False
+        return "Single", result
+
+    # For ships greater than size 1
+    alignments = ["Vertical", "Horizontal"]
+
+    # Randomly pick an alignment and remove it from the list
+    alignment = random.choice(alignments)
+    alignments.remove(alignment)
+
+    result = map_search_for_pattern(map_game, 1 if alignment == "Horizontal"
+    else ship_size, 1 if alignment == "Vertical" else ship_size,)
+    if result:
         return alignment, result
-    else:
-        alignment = random.choice(["Vertical", "Horizontal"])
-        if alignment == "Vertical":
-            result = map_search_for_pattern(map_game, ship_size, 1)
-            if not result:  # if nothing is found with vertical, we will try
-                # horizontal
-                alignment = "Horizontal"
-                result = map_search_for_pattern(map_game, 1, ship_size)
-                if not result:
-                    return False
-                else:
-                    return alignment, result
-            else:
-                return alignment, result
 
-        elif alignment == "Horizontal":
-            result = map_search_for_pattern(map_game, 1, ship_size)
+    # Try the other alignment
+    alignment = alignments[0]  # Only one item should be left
+    result = map_search_for_pattern(map_game, 1 if alignment == "Horizontal"
+    else ship_size, 1 if alignment == "Vertical" else ship_size,)
+    if result:
+        return alignment, result
 
-            if not result:  # if nothing is found with horizontal, we will
-                # try vertical
-                alignment = "Vertical"
-                result = map_search_for_pattern(map_game, ship_size, 1)
-                if not result:
-                    return False
-                else:
-                    return alignment, result
-            else:
-                return alignment, result
+    return False  # No suitable coordinates found
 
 
 def map_search_for_pattern(map_game, height, width):
@@ -1245,4 +1239,5 @@ print(fleet_cpu)
 print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
                DEFAULT_COORDINATES_STYLE[1][0], DEFAULT_COORDINATES_STYLE[1][1], 10)
 
-fleet_cpu.print_fleet_table()
+game_coordinates_style = DEFAULT_COORDINATES_STYLE
+fleet_cpu.print_fleet(['deployed_coordinates'], game_coordinates_style)
