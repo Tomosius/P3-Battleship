@@ -14,14 +14,17 @@ import shutil
 from collections import defaultdict
 
 # Constants for map dimensions and default symbol
-DEFAULT_MAP_HEIGHT = 10
-DEFAULT_MAP_WIDTH = 10
-DEFAULT_SYMBOL = '?'  # Symbol representing an empty cell in the map
-DEFAULT_GAPS_BETWEEN_MAPS = True
+# DEFAULT_MAP_SETTINGS consist of 4 values:
+# 1. Map Height - number of rows
+# 2. Map Width - number of columns
+# 3. Default symbol displayed on map, o prefer ? - as it is unknown what is
+# hiding there
+# 4. Gaps - gabes between ships, default value = True
+DEFAULT_MAP_SETTINGS = [10,10,"?",True]
 
 # DEFAULT_COORDINATE_STYLE consist of 2 lists:
-# 1st: default input output style, row - column, player can change it in 
-# settings to be column - row 
+# 1st: default input output style, row - column, player can change it in
+# settings to be column - row
 # 2nd: Row and column indexe labels, player can change it to letters
 DEFAULT_COORDINATES_STYLE = [["Row", "Column"],
                              [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
@@ -931,57 +934,7 @@ def map_show_symbols(map_game: List[List[str]], coordinates_list: List[
     return map_game  # Return the updated game map
 
 
-def map_allocate_empty_space_for_ship(map_game: List[List[str]],
-                                      coordinates_list: List[Tuple[int,
-                                      int]], symbol: str):
-    """
-    Allocate empty space around a ship on a 2D map.
 
-    This function modifies the given map_game to ensure that ships cannot be
-    deployed touching each other. It marks the empty space around a ship with
-    'Miss' symbols. After all ships are deployed, these symbols will be
-    changed back to DEFAULT_SYMBOL.
-
-    Args:
-        map_game (list): The 2D map where the ship will be deployed.
-        coordinates_list (list): List of coordinates where the ship is
-        located.
-        symbol (str) - symbol will be marking empty allocated are on map
-
-    Global Variables:
-        SHIP_SYMBOLS (dict): Dictionary containing ship symbols.
-
-    Returns:
-        list: Modified game map with empty spaces around the ship.
-    """
-
-    # Access the global variable SHIP_SYMBOLS for ship symbols
-
-    # Define the relative positions for empty space around a single cell
-    blank_space = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 0], [0, 1],
-                   [1, -1], [1, 0], [1, 1]]
-
-    # Initialize an empty list to store the coordinates for empty spaces
-    blank_space_coordinates_list = []
-
-    # Calculate the actual positions for empty space around each cell of the
-    # ship
-    for space in blank_space:
-        blank_row, blank_column = space
-        for coordinate in coordinates_list:
-            new_row, new_column = coordinate
-            new_blank_row, new_blank_column = (blank_row + new_row,
-                                               blank_column + new_column)
-            blank_space_coordinates_list.append([new_blank_row,
-                                                 new_blank_column])
-
-    # Update the map to allocate empty space around the ship
-    for new_space in blank_space_coordinates_list:
-        b_row, b_column = new_space
-        if 0 <= b_row < len(map_game) and 0 <= b_column < len(map_game[0]):
-            map_game[b_row][b_column] = symbol
-
-    return map_game
 
 
 def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
@@ -1124,12 +1077,12 @@ def cpu_deploy_get_coordinates(map_game: List[List[str]], ship_size: int) -> \
 
 def map_search_for_pattern(map_game, height, width):
     """
-    Search for occurrences of a pattern of DEFAULT_SYMBOL on the map and
+    Search for occurrences of a pattern of 'default symbol' on the map and
     return their coordinates.
 
     This function iterates through the game map to find all occurrences of a
     pattern
-    of DEFAULT_SYMBOL of the specified height and width. The coordinates of
+    of 'defvault symbol' of the specified height and width. The coordinates of
     the top-left
     corner of each found pattern are returned.
 
@@ -1139,8 +1092,7 @@ def map_search_for_pattern(map_game, height, width):
         width (int): The width of the pattern to search for.
 
     Global Variables:
-        DEFAULT_SYMBOL (str): The default symbol representing an empty cell
-        on the map.
+        DEFAULT_MAP_SETTINGS (List): Default settings for Map
 
     Returns:
         List[Tuple[int, int]]: A list of coordinates (row, col) where the
@@ -1149,7 +1101,7 @@ def map_search_for_pattern(map_game, height, width):
     """
 
     # Reference the global variable for the default symbol
-    global DEFAULT_SYMBOL
+    global DEFAULT_MAP_SETTINGS
 
     # Retrieve the dimensions of the game map
     map_height, map_width = len(map_game), len(map_game[0])
@@ -1159,7 +1111,7 @@ def map_search_for_pattern(map_game, height, width):
     coordinates = []
 
     # Create the pattern using list comprehension
-    pattern = [[DEFAULT_SYMBOL] * width for _ in range(height)]
+    pattern = [DEFAULT_MAP_SETTINGS[2] * width for _ in range(height)]
 
     # Traverse the map to find matching patterns
     for row in range(map_height - height + 1):
@@ -1231,7 +1183,7 @@ def map_allocate_empty_space_for_ship(map_game: List[List[str]],
     This function modifies the given map_game to ensure that ships can't be
     deployed touching each other. It marks the empty space around a ship with
     'Miss' symbols. After all ships are deployed, these symbols will be
-    changed back to DEFAULT_SYMBOL.
+    changed back to 'default symbol'.
 
     Args:
         map_game (list): The 2D map where the ship will be deployed.
@@ -1280,9 +1232,9 @@ def map_allocate_empty_space_for_ship(map_game: List[List[str]],
 
 
 map_cpu_hidden = create_map(13, 13,
-                            DEFAULT_SYMBOL)
+                            DEFAULT_MAP_SETTINGS[2])
 map_cpu_display = create_map(13, 13,
-                             DEFAULT_SYMBOL)
+                             DEFAULT_MAP_SETTINGS[2])
 fleet_cpu = create_default_fleet()
 print(fleet_cpu)
 
