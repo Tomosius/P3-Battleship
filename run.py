@@ -1594,7 +1594,7 @@ def game_change_settings(game_map_settings):
         try:
             user_input = input()
             if len(user_input) == 1:
-                if user_input == 0:
+                if user_input == "0":
                     return game_map_settings
                 print(user_input)
             else:
@@ -1626,9 +1626,9 @@ def user_command_input(game_map_settings, user_input):
 
         else:
             user_input_list = [f' You have entered: {user_input}', "",
-                                f'I believe you wanted to say:', "",
+                                "I believe you wanted to say:", "",
                                 f'    {user_command}', "",
-                                f'If I am correct, just press ENTER', "",
+                                "If I am correct, just press ENTER", "",
                                 "type 0 to go back"]
 
         print_map_and_list(tmp_map, user_input_list, "Ships on Map",
@@ -1636,6 +1636,8 @@ def user_command_input(game_map_settings, user_input):
 
         try:
             user_input = input()
+            if user_input.strip() == "":
+                execute_user_command(user_command, game_map_settings)
             if len(user_input) == 1:
                 if user_input == 0:
                     return game_map_settings
@@ -1644,9 +1646,61 @@ def user_command_input(game_map_settings, user_input):
 
         except KeyboardInterrupt:
             clear_terminal()
-            print("You have terminated game settings changes, I will return "
-                  "back settings that I have at the moment")
-            return game_map_settings  # Return False to indicate interruption
+            print("You have terminated game settings changes")
+            return False # Return False to indicate interruption
+
+def execute_user_command(user_command, game_map_settings):
+    if user_command == "modify fleet":
+        print("function to execute modify fleet")
+    elif user_command == "print fleet":
+        print("function to execute print fleet")
+    elif user_command == "modify ship":
+        print("function to execute modify ship")
+    elif user_command == "add ship":
+        print("function to execute add ship")
+    elif user_command == "delete ship":
+        print("function to execute delete ship")
+    elif user_command == "change map size":
+        print("function to execute change map size")
+    elif user_command == "gaps between ships":
+        print("function to execute gaps between ships")
+    elif user_command == "change coordinate labels":
+        print("function to execute change coordinate labels")
+    elif user_command == "change input":
+        print("function to execute change input")
+    elif user_command == "start game":
+        print("function to execute start game")
+    elif user_command == "reset settings":
+        print("function to execute reset settings")
+
+
+
+
+def check_fleet_fits_map(map_game, fleet, game_map_settings):
+    # this function will use cpu_deploy_all_ships in loop for 50 times,
+    # till ships are deployed, if after 50 attempts no luck to deploy all of
+    # them, it means ships do not fit on map, player has to reduce fleet
+    for _ in range(50):
+        tmp_game_fleet = create_default_fleet()
+
+        # Create a new game map of size 10x10
+        tmp_map_game = create_map(10, 10, game_map_settings[2])
+
+        # Deploy all ships on the game map
+        map_game = cpu_deploy_all_ships(tmp_map_game, tmp_game_fleet,
+                                    game_map_settings[3])
+        if not map_game:
+            continue
+        else:
+            return map_game
+    return False # if after 50 attemps fleet doe4s not fit map, we return false
+
+
+
+
+
+
+
 
 def tmp_ships_on_map(game_map_settings: List[str]) -> Union[bool, Tuple[List[
                                                     List[Union[str, int]]],
@@ -1667,13 +1721,14 @@ def tmp_ships_on_map(game_map_settings: List[str]) -> Union[bool, Tuple[List[
     """
 
     # Create a default fleet for the game
-    game_fleet_settings = create_default_fleet()
+    tmp_game_fleet = create_default_fleet()
 
     # Create a new game map of size 10x10
-    map_game = create_map(10, 10, game_map_settings[2])
+    tmp_map_game = create_map(10, 10, game_map_settings[2])
 
     # Deploy all ships on the game map
-    map_game = cpu_deploy_all_ships(map_game, game_fleet_settings)
+    map_game = cpu_deploy_all_ships(tmp_map_game, tmp_game_fleet,
+                                    game_map_settings[3])
 
     # Check if all ships were successfully deployed
     if not map_game:
