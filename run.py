@@ -12,6 +12,7 @@ from icecream import ic
 import math
 import shutil
 from collections import defaultdict
+from collections import Counter
 
 # Constants for map dimensions and default symbol
 # DEFAULT_MAP_SETTINGS consist of 4 values:
@@ -29,7 +30,7 @@ DEFAULT_MAP_SETTINGS = [10,
                         10,
                         "?",
                         True,
-                        ["Column", "Row"],
+                        ["Row", "Column"],
                         [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
                          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]]
 
@@ -63,37 +64,55 @@ DEFAULT_SHIPS = [
 ]
 
 # Game instructions and settings, presented as lists
-INSTRUCTIONS = ["1. Ships can be \u001b[34mHORIZONTAL\u001b[0m or \u001b[32mVERTICAL\u001b[0m",
-                "2. Ships can \u001b[31mNOT\u001b[0m be touching each other",
-                "3. Default game map is size 10 by 10",
-                "4. Coordinate Entering style:",
-                "   Row, COMMA, Column",
-                "5. \u001b[31mDAMAGED\u001b[0m ships will be green color",
-                "",
-                "To adjust game settings type \u001b[33mY\u001b["
-                "0m",
-                "",
-                "To start game just press \u001b["
-                "33mENTER\u001b[0m"]
+LIST_INSTRUCTIONS = [
+    "1. Ships can be \u001b[34mHORIZONTAL\u001b[0m or \u001b["
+    "32mVERTICAL\u001b[0m",
+    "2. Ships can \u001b[31mNOT\u001b[0m be touching each other",
+    "3. Default game map is size 10 by 10",
+    "4. Coordinate Entering style:",
+    f'   {DEFAULT_MAP_SETTINGS[4][0]}, COMMA, {DEFAULT_MAP_SETTINGS[4][1]}',
+    "5. \u001b[31mDAMAGED\u001b[0m ships will be green color",
+    "",
+    "To adjust game settings type \u001b[33mY\u001b["
+    "0m",
+    "",
+    "To start game just press \u001b["
+    "33mENTER\u001b[0m"]
+# Gsme settings adjustment text
+LIST_GAME_SETTINGS_CHANGES= [
+    "To change game \u001b[33mFLEET\u001b[0m type \u001b[31mF\u001b[0m ",
+    "If you want to change \u001b[33mMAP\u001b[0m type \u001b[31mM\u001b[0m ",
+    "To change \u001b[33mCOORDINATES\u001b[0m  style type \u001b["
+    "31mS\u001b[0m ",
+    "",
+    "You can select changes by typing, E.g.:",
+    "",
+    "    \u001b[33mmodify fleet\u001b[0m",
+    "",
+    "To return back type \u001b[31m0\u001b[0m - zero"
+]
 
 # Commands dictionary
 # -------------------
 
 # Creating a dictionary of commands and their possible similar expressions
 # that a user might use
-commands_dictionary = {
+DICTIONARY_COMMANDS = {
+    'modify fleet': ['edit fleet', 'update fleet', 'fleet modify'],
+    'print fleet': ['show fleet', 'display fleet', 'fleet view'],
+    'modify ship': ['edit ship', 'ship edit', 'update ship', 'ship edit',
+                    'ship modify', 'change ship', 'ship change'],
     'add ship': ['insert ship', 'place ship', 'ship add'],
     'delete ship': ['remove ship', 'erase ship', 'ship delete'],
     'change map size': ['resize map', 'adjust map', 'map dimensions'],
-    'print fleet': ['show fleet', 'display fleet', 'fleet view'],
-    'modify ship': ['edit ship', 'update ship', 'ship modify'],
-    'modify fleet': ['edit fleet', 'update fleet', 'fleet modify'],
     'gaps between ships': ['ship spacing', 'distance between ships',
                            'ship gaps'],
-    'start game': ['begin game', 'launch game', 'game start'],
-    'reset settings': ['default settings', 'clear settings', 'settings reset'],
     'change coordinate labels': ['modify grid labels',
-                                 'edit coordinate names', 'labels change']
+                                 'edit coordinate names', 'labels change'],
+    'change input': ['change input', 'input change', 'swap input',
+                     'input swap'],
+    'start game': ['begin game', 'launch game', 'game start'],
+    'reset settings': ['default settings', 'clear settings',"settings reset"],
 }
 
 
@@ -148,8 +167,21 @@ def levenshtein_ratio(first_string: str, second_string: str) -> float:
     return SequenceMatcher(None, first_string, second_string).ratio()
 
 
-def find_best_match(user_input: str, possible_commands: List[str]) -> (
-        Optional)[str]:
+def find_unique_words(possible_commands: List[str]) -> set:
+    """
+    Find words that appear only once across all possible commands.
+
+    Parameters:
+        possible_commands (List[str]): A list of possible commands to search.
+
+    Returns:
+        set: A set of unique words.
+    """
+    all_words = [word for command in possible_commands for word in command.split()]
+    word_count = Counter(all_words)
+    return {word for word, count in word_count.items() if count == 1}
+
+def find_best_match(user_input: str, possible_commands: List[str]) -> Optional[str]:
     """
     Find the best matching command based on user input and a list of possible
     commands.
@@ -166,13 +198,41 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
     Returns:
         Optional[str]:
         The best-matching command, or:
-        None if no-reasonable match is found.
+        None if no reasonable match is found.
     """
     # Normalize the user input for comparison
-    user_input = input_normalize_string(user_input)
+    normalized_user_input = input_normalize_string(user_input)
 
-    # Initialize variables to store the best match and its Levenshtein
-    # distance ratio
+    # Find unique words from the list of possible commands
+    unique_words = find_unique_words(possible_commands)
+
+    # Initialize variables to store the best unique word match and its Levenshtein distance ratio
+    best_unique_word = None
+    max_unique_word_ratio = -1
+
+    # Check if the user input contains or nearly matches any unique word
+    for word in normalized_user_input.split():
+        if word in unique_words:
+            return next(command for command in possible_commands if word in command.split())
+
+        # Check for near-matches with unique words
+        for unique_word in unique_words:
+            ratio = levenshtein_ratio(word, unique_word)
+            if ratio > max_unique_word_ratio:
+                max_unique_word_ratio = ratio
+                best_unique_word = unique_word
+
+    # Check for unique words that are substrings of words in the user input
+    for unique_word in unique_words:
+        for word in normalized_user_input.split():
+            if unique_word in word or word in unique_word:
+                return next(command for command in possible_commands if unique_word in command.split())
+
+    # If a near-match with a unique word is found, return the corresponding command
+    if max_unique_word_ratio > 0.85:
+        return next(command for command in possible_commands if best_unique_word in command.split())
+
+    # Initialize variables to store the best match and its Levenshtein distance ratio
     max_ratio = -1
     best_match = None
 
@@ -181,21 +241,22 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> (
         # Normalize the possible command for comparison
         normalized_command = input_normalize_string(command)
 
-        # Calculate the Levenshtein distance ratio between the normalized
-        # user input and the possible command
-        ratio = levenshtein_ratio(user_input, normalized_command)
+        # Calculate the Levenshtein distance ratio between the normalized user input and the possible command
+        ratio = levenshtein_ratio(normalized_user_input, normalized_command)
 
         # Update the best match and its ratio if the current ratio is higher
         if ratio > max_ratio:
             max_ratio = ratio
             best_match = command
 
-    # A threshold is set for the Levenshtein distance ratio to consider a
-    # match as reasonable This threshold can be adjusted as needed
+    # A threshold is set for the Levenshtein distance ratio to consider a match as reasonable
     if max_ratio > 0.6:
         return best_match
     else:
         return None
+
+
+
 
 
 # Ship managing functions:
@@ -546,7 +607,8 @@ class Fleet:
         Gather basic information about each ship in the fleet.
 
         Returns:
-            List[dict]: A list of dictionaries containing basic information about each ship.
+            List[dict]: A list of dictionaries containing basic information
+            about each ship.
         """
         ship_info = {}
         for ship in self.ships:
@@ -564,7 +626,8 @@ class Fleet:
             ship_info_list (List[dict]): The list containing ship information.
         """
         for info in ship_info_list:
-            info['deployed_qty'] = sum(ship.deployed for ship in self.ships if ship.name == info['name'])
+            info['deployed_qty'] = sum(ship.deployed for ship in self.ships if
+                                       ship.name == info['name'])
 
     def add_sunk_qty(self, ship_info_list):
         """
@@ -574,7 +637,8 @@ class Fleet:
             ship_info_list (List[dict]): The list containing ship information.
         """
         for info in ship_info_list:
-            info['sunk_qty'] = sum(ship.sunk for ship in self.ships if ship.name == info['name'])
+            info['sunk_qty'] = sum(
+                ship.sunk for ship in self.ships if ship.name == info['name'])
 
     def format_coordinates(self, coordinates, game_map_settings):
         """
@@ -600,7 +664,8 @@ class Fleet:
             formatted_coordinates.append(' '.join(formatted_set))
         return formatted_coordinates
 
-    def add_coordinates_condition(self, ship_info_list, condition, game_map_settings):
+    def add_coordinates_condition(self, ship_info_list, condition,
+                                  game_map_settings):
         """
         Add coordinates condition to the ship information list.
 
@@ -611,15 +676,18 @@ class Fleet:
         """
         for info in ship_info_list:
             coordinates = [ship.cell_coordinates for ship in self.ships if
-                           ship.name == info['name'] and getattr(ship, condition.split('_')[0])]
-            info[condition] = self.format_coordinates(coordinates, game_map_settings)
+                           ship.name == info['name'] and
+                           getattr(ship, condition.split('_')[0])]
+            info[condition] = self.format_coordinates(coordinates,
+                                                      game_map_settings)
 
-    def print_fleet(self, conditions=[], game_map_settings=None):
+    def print_fleet(self, conditions="", game_map_settings=None):
         """
         Print the fleet information based on given conditions.
 
         Parameters:
-            conditions (List[str], optional): List of conditions to filter the information.
+            conditions (List[str], optional): List of conditions to filter
+            the information.
             game_map_settings (List, optional): The game's coordinate style.
         """
         ship_info_list = self.gather_basic_info()
@@ -629,9 +697,11 @@ class Fleet:
             'deployed_qty': self.add_deployed_qty,
             'sunk_qty': self.add_sunk_qty,
             'deployed_coordinates': lambda ship_info:
-            self.add_coordinates_condition(ship_info, 'deployed_coordinates', game_map_settings),
+            self.add_coordinates_condition(ship_info, 'deployed_coordinates',
+                                           game_map_settings),
             'sunk_coordinates': lambda ship_info:
-            self.add_coordinates_condition(ship_info, 'sunk_coordinates', game_map_settings)
+            self.add_coordinates_condition(ship_info, 'sunk_coordinates',
+                                           game_map_settings)
         }
 
         # Apply each condition function to ship_info_list
@@ -655,7 +725,8 @@ class Fleet:
 
         # Print the ship information
         for info in ship_info_list:
-            print(f"{info['name']:<20}{info['size']:<10}{info['qty']:<10}", end="")
+            print(f"{info['name']:<20}{info['size']:<10}{info['qty']:<10}",
+                  end="")
             for condition in conditions:
                 if 'coordinates' not in condition:
                     print(f"{info.get(condition, 0):<10}", end="")
@@ -663,7 +734,8 @@ class Fleet:
 
             self.fleet_print_coordinates(conditions, info)
 
-    def fleet_print_coordinates(self, conditions: List[str], info: Dict[str, any]) -> None:
+    def fleet_print_coordinates(self, conditions: List[str],
+                                info: Dict[str, any]) -> None:
         """
         Print the coordinates for each ship based on the given conditions.
 
@@ -771,7 +843,7 @@ def find_max_label_length(map_size: int,
 
 def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
                    label_left: str, label_right: str, game_map_settings,
-                   gap = 10) -> None:
+                   gap=10) -> None:
     """
     Print two 2D maps side-by-side with dynamically centered labels and a
     customizable gap.
@@ -857,7 +929,8 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
 
 
 def print_map_and_list(map_left: List[List[str]], instructions: List[str],
-                       label_left: str, label_instructions: str, game_map_settings,
+                       label_left: str, label_instructions: str,
+                       game_map_settings,
                        gap=10) -> None:
     """
     Print a 2D map on the left and a list of instructions on the right with
@@ -868,26 +941,34 @@ def print_map_and_list(map_left: List[List[str]], instructions: List[str],
         instructions: A list of strings representing the instructions.
         label_left: Label for the map.
         label_instructions: Label for the instructions.
-        game_map_settings: Game map settings including row and column index labels.
-        gap: Number of blank spaces between the map and instructions. Default is 10.
+        game_map_settings: Game map settings including row and column index
+        labels.
+        gap: Number of blank spaces between the map and instructions.
+        Default is 10.
     """
     char_width = len("X")
     row_index_label = game_map_settings[5][0]
     column_index_label = game_map_settings[5][1]
-    num_digits_map_width = find_max_label_length(len(map_left[0]), column_index_label)
-    num_digits_map_height = find_max_label_length(len(map_left), row_index_label)
+    num_digits_map_width = find_max_label_length(len(map_left[0]),
+                                                 column_index_label)
+    num_digits_map_height = find_max_label_length(len(map_left),
+                                                  row_index_label)
     gap_str = ' ' * gap
     row_index_separator = " | "
-    print_map_left_offset = " " * (num_digits_map_height + len(row_index_separator))
-    number_char_table_total = len(map_left[0]) * (num_digits_map_width + char_width + 1)
+    print_map_left_offset = " " * (
+            num_digits_map_height + len(row_index_separator))
+    number_char_table_total = len(map_left[0]) * (
+            num_digits_map_width + char_width + 1)
     label_left_centered = label_left.center(number_char_table_total)
     print(f"{print_map_left_offset}{label_left_centered}{gap_str}"
           f"{print_map_left_offset}{label_instructions.center(40)}")
     print(print_map_left_offset, end=" ")
     for col_index in range(len(map_left[0])):
-        print(str(column_index_label[col_index]).rjust(num_digits_map_width + char_width), end=" ")
+        print(str(column_index_label[col_index]).rjust(
+            num_digits_map_width + char_width), end=" ")
     print(gap_str)
-    separator_length_left = len(map_left[0]) * (num_digits_map_width + char_width + 1)
+    separator_length_left = len(map_left[0]) * (
+            num_digits_map_width + char_width + 1)
     print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
     print("")
     for row_index, row_left in enumerate(map_left):
@@ -895,16 +976,109 @@ def print_map_and_list(map_left: List[List[str]], instructions: List[str],
               end=row_index_separator)
         for value in row_left:
             width = len(str(value))
-            print(str(value).rjust(num_digits_map_width + char_width - (char_width - width)), end=" ")
+            print(str(value).rjust(
+                num_digits_map_width + char_width - (char_width - width)),
+                end=" ")
         print(gap_str, end="")
-        instruction = instructions[row_index] if row_index < len(instructions) else ''
+        instruction = instructions[row_index] if row_index < len(
+            instructions) else ''
         print(instruction.ljust(40), end="")
         print()
     for row_index in range(len(map_left), len(instructions)):
         print(" " * (num_digits_map_height + len(row_index_separator) +
-                     len(map_left[0]) * (num_digits_map_width + char_width + 1) +
+                     len(map_left[0]) * (
+                             num_digits_map_width + char_width + 1) +
                      gap), end="")
         print(instructions[row_index].ljust(40))
+
+
+def find_max_column_width(table: List[List[Union[str, int]]]) -> List[int]:
+    """
+    Find the maximum width for each column in the table.
+
+    Args:
+        table: A 2D list representing the table.
+
+    Returns:
+        List[int]: A list of maximum widths for each column.
+    """
+    max_widths = [0] * len(table[0])
+    for row in table:
+        for i, cell in enumerate(row):
+            max_widths[i] = max(max_widths[i], len(str(cell)))
+    return max_widths
+
+def print_map_and_table(map_left: List[List[str]], table: List[List[Union[
+                        str, int]]], label_left: str, label_table: str,
+                        game_map_settings: List, gap: int = 10) -> None:
+    """
+    Print a 2D map on the left and a table on the right with dynamically
+    centered labels and a customizable gap.
+
+    Args:
+        map_left: A 2D list representing the map.
+        table: A 2D list representing the table. The first row contains headers.
+        label_left: Label for the map.
+        label_table: Label for the table.
+        game_map_settings: Game map settings including row and column index labels.
+        gap: Number of blank spaces between the map and table. Default is 10.
+    """
+    # Constants for character dimensions and formatting
+    char_width = len("X")
+    row_index_label = game_map_settings[5][0]
+    column_index_label = game_map_settings[5][1]
+    num_digits_map_width = find_max_label_length(len(map_left[0]), column_index_label)
+    num_digits_map_height = find_max_label_length(len(map_left), row_index_label)
+    max_col_widths = find_max_column_width(table)
+    gap_str = ' ' * gap
+    row_index_separator = " | "
+    print_map_left_offset = " " * (num_digits_map_height + len(row_index_separator))
+    number_char_map_total = len(map_left[0]) * (num_digits_map_width + char_width + 1)
+    label_left_centered = label_left.center(number_char_map_total)
+    label_table_centered = label_table.center(sum(max_col_widths) + len(max_col_widths) - 1)
+
+    # Print the centered labels for both map and table
+    print(f"{print_map_left_offset}{label_left_centered}{gap_str}{label_table_centered}")
+
+    # Print column headers for the map
+    print(print_map_left_offset, end=" ")
+    for col_index in range(len(map_left[0])):
+        print(str(column_index_label[col_index]).rjust(num_digits_map_width + char_width), end=" ")
+    print(gap_str, end="")
+
+    # Print the table headers
+    for i, header in enumerate(table[0]):
+        print(str(header).ljust(max_col_widths[i]), end=" " if i < len(table[0]) - 1 else "\n")
+
+    # Print the horizontal separator line for the map
+    separator_length_left = len(map_left[0]) * (num_digits_map_width + char_width + 1)
+    print(print_map_left_offset + "=" * separator_length_left, end=gap_str)
+
+    # Print the horizontal separator line for the table
+    print("=" * (sum(max_col_widths) + len(max_col_widths) - 1))
+
+    # Loop through each row to print map values and table rows
+    for row_index, row_left in enumerate(map_left):
+        print(str(row_index_label[row_index]).rjust(num_digits_map_height + 1), end=row_index_separator)
+        for value in row_left:
+            width = len(str(value))
+            print(str(value).rjust(num_digits_map_width + char_width - (char_width - width)), end=" ")
+        print(gap_str, end="")
+
+        # Print the table row if it exists
+        if row_index < len(table) - 1:  # Skip the header row
+            table_row = table[row_index + 1]
+            for i, cell in enumerate(table_row):
+                print(str(cell).ljust(max_col_widths[i]), end=" " if i < len(table_row) - 1 else "\n")
+        else:
+            print()
+
+    # If there are more rows in the table than the map, print the remaining rows
+    for row_index in range(len(map_left), len(table) - 1):  # Skip the header row
+        print(" " * (num_digits_map_height + len(row_index_separator) + len(map_left[0]) * (num_digits_map_width + char_width + 1) + gap), end="")
+        table_row = table[row_index + 1]
+        for i, cell in enumerate(table_row):
+            print(str(cell).ljust(max_col_widths[i]), end=" " if i < len(table_row) - 1 else "\n")
 
 
 
@@ -1382,53 +1556,131 @@ Game Instructions and settings
 ------------------------------
 """
 
-def game_insructions():
+
+def game_instructions():
     # Print Acid affect
-    #print_acid_effect()
+    # print_acid_effect()
 
     # create game map settings just for current game session
     global DEFAULT_MAP_SETTINGS
+    game_map_settings = DEFAULT_MAP_SETTINGS
     while True:
         clear_terminal()
-        tmp_map, tmp_map_settings = tmp_ships_on_map(DEFAULT_MAP_SETTINGS)
+        tmp_map = tmp_ships_on_map(game_map_settings)
 
-        print_map_and_list(tmp_map, INSTRUCTIONS, "Ships on Map", "Instructions", tmp_map_settings, 5)
+        print_map_and_list(tmp_map, LIST_INSTRUCTIONS, "Ships on Map",
+                           "Instructions", game_map_settings, 5)
 
         try:
             user_input = input()
             if user_input.upper() in ["Y", "YES"]:
-                print("start game settings adjusment")
+                game_map_settings = game_change_settings(game_map_settings)
 
         except KeyboardInterrupt:
-            print("Game adjustment interrupted.")
+            clear_terminal()
+            print("You have terminated program")
             return False  # Return False to indicate interruption
 
-def tmp_ships_on_map(game_map_settings):
+
+def game_change_settings(game_map_settings):
+
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(game_map_settings)
+
+        print_map_and_list(tmp_map, LIST_GAME_SETTINGS_CHANGES, "Ships on Map",
+                           "Settings", game_map_settings, 5)
+
+        try:
+            user_input = input()
+            if len(user_input) == 1:
+                if user_input == 0:
+                    return game_map_settings
+                print(user_input)
+            else:
+                user_command_input(game_map_settings, user_input)
+
+
+        except KeyboardInterrupt:
+            clear_terminal()
+            print("You have terminated game settings changes, I will return "
+                  "back settings that I have at the moment")
+            return game_map_settings  # Return False to indicate interruption
+
+
+def user_command_input(game_map_settings, user_input):
+
+    while True:
+        user_command = find_best_match(user_input.lower(), DICTIONARY_COMMANDS)
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(game_map_settings)
+        if user_command == None:
+            user_input_list = ["I am sorry but i did not understand",
+                               "what You wanted to say","",
+                               "Please try following commands:","",
+                               "modify fleet    print fleet",
+                               "modify ship    add ship    delete ship",
+                               "change map size    gaps between ships",
+                               "change coordinate labels    change input",
+                               "start game    reset settings"]
+
+        else:
+            user_input_list = [f' You have entered: {user_input}', "",
+                                f'I believe you wanted to say:', "",
+                                f'    {user_command}', "",
+                                f'If I am correct, just press ENTER', "",
+                                "type 0 to go back"]
+
+        print_map_and_list(tmp_map, user_input_list, "Ships on Map",
+                           "User Command", game_map_settings, 5)
+
+        try:
+            user_input = input()
+            if len(user_input) == 1:
+                if user_input == 0:
+                    return game_map_settings
+                print(user_input)
+
+
+        except KeyboardInterrupt:
+            clear_terminal()
+            print("You have terminated game settings changes, I will return "
+                  "back settings that I have at the moment")
+            return game_map_settings  # Return False to indicate interruption
+
+def tmp_ships_on_map(game_map_settings: List[str]) -> Union[bool, Tuple[List[
+                                                    List[Union[str, int]]],
+                                                    List[str]]]:
     """
-    function to generate temporary fleet, ships and display them on map,
-    this is just nice feature, so every time there is fresh map with ships,
-    each time different patern of ships on map
-    :param game_map_settings:
-    :return:
+    Generate a temporary fleet of ships and display them on a map.
+    This function provides a new map with a different pattern of ships each
+    time.
+
+    Args:
+        game_map_settings: The settings for the game map.
+
+    Returns:
+        Union[bool, Tuple[List[List[Union[str, int]]], List]]:
+            Returns False if the CPU cannot deploy all the ships.
+            Otherwise, returns a tuple containing the updated game map and
+            game settings.
     """
 
+    # Create a default fleet for the game
     game_fleet_settings = create_default_fleet()
 
-    map_game = create_map(10, 10,
-                                 game_map_settings[2])
+    # Create a new game map of size 10x10
+    map_game = create_map(10, 10, game_map_settings[2])
 
+    # Deploy all ships on the game map
     map_game = cpu_deploy_all_ships(map_game, game_fleet_settings)
+
+    # Check if all ships were successfully deployed
     if not map_game:
-        print(" cpu can not deploy all ships, do not fit")
+        print("CPU cannot deploy all ships; they do not fit.")
         return False
     else:
-        return  map_game, game_map_settings
-
-
-
-
-
-
+        return map_game
 
 
 
@@ -1436,10 +1688,9 @@ def tmp_ships_on_map(game_map_settings):
 -----------------------------"""
 
 
-
 def start_game():
     # Print Acid affect
-    #print_acid_effect()
+    # print_acid_effect()
 
     # create game map settings just for current game session
     global DEFAULT_MAP_SETTINGS
@@ -1447,24 +1698,23 @@ def start_game():
 
     game_fleet_settings = create_default_fleet()
 
-    map_cpu_hidden = create_map(10, 10,
-                                game_map_settings[2])
     map_cpu_display = create_map(10, 10,
                                  game_map_settings[2])
 
-    map_cpu_display = cpu_deploy_all_ships(map_cpu_display, game_fleet_settings)
+    map_cpu_display = cpu_deploy_all_ships(map_cpu_display,
+                                           game_fleet_settings)
     if not map_cpu_display:
         print(" cpu can not deploy all ships, do not fit")
         return False
 
-    print_map_and_list(map_cpu_display, INSTRUCTIONS, "Ships on Map", "Instructions", game_map_settings, 10)
+    print_map_and_list(map_cpu_display, LIST_INSTRUCTIONS, "Ships on Map",
+                       "Instructions", game_map_settings, 10)
+
+    # print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
+    # game_map_settings, 10)
+
+    # game_fleet_settings.print_fleet(["deployed_qty", 
+    # "deployed_coordinates"], game_map_settings)
 
 
-    #print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display", game_map_settings, 10)
-
-    # game_fleet_settings.print_fleet(["deployed_qty", "deployed_coordinates"], game_map_settings)
-
-
-#rezultatas = start_game()
-
-game_insructions()
+game_instructions()
