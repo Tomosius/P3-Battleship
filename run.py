@@ -14,26 +14,6 @@ import shutil
 from collections import defaultdict
 from collections import Counter
 
-# Constants for map dimensions and default symbol
-# DEFAULT_MAP_SETTINGS consist of 4 values:
-# 0. Map Height - number of rows
-# 1. Map Width - number of columns
-# 2. Default symbol displayed on map, o prefer ? - as it is unknown what is
-# hiding there
-# 3. Gaps - gabes between ships, default value = True
-# 4. default input output style, row - column, player can change it in
-# settings to be column - row
-# 5. List of:
-# 5.0. Row index labels
-# 5.1. Column index labels
-DEFAULT_MAP_SETTINGS = [10,
-                        10,
-                        "?",
-                        True,
-                        ["Row", "Column"],
-                        [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]]
-
 # ANSI color codes used for visual representation of different ship statuses
 DEFAULT_COLORS: Dict[str, str] = {
     "DarkYellow": "\u001b[33m",
@@ -70,7 +50,7 @@ LIST_INSTRUCTIONS = [
     "2. Ships can \u001b[31mNOT\u001b[0m be touching each other",
     "3. Default game map is size 10 by 10",
     "4. Coordinate Entering style:",
-    f'   {DEFAULT_MAP_SETTINGS[4][0]}, COMMA, {DEFAULT_MAP_SETTINGS[4][1]}',
+    f'  COLUMN , COMMA, ROW',
     "5. \u001b[31mDAMAGED\u001b[0m ships will be green color",
     "",
     "To adjust game settings type \u001b[33mY\u001b["
@@ -78,7 +58,7 @@ LIST_INSTRUCTIONS = [
     "",
     "To start game just press \u001b["
     "33mENTER\u001b[0m"]
-# Gsme settings adjustment text
+# Game settings adjustment text
 LIST_GAME_SETTINGS_CHANGES= [
     "To change game \u001b[33mFLEET\u001b[0m type \u001b[31mF\u001b[0m ",
     "If you want to change \u001b[33mMAP\u001b[0m type \u001b[31mM\u001b[0m ",
@@ -134,7 +114,7 @@ def clear_terminal():
 # User Input Processing Functions
 # -------------------------------
 
-def input_normalize_string(text_input: str) -> str:
+def input_normalize_string(text_input):
     """
     Normalize the command string for easier comparison.
 
@@ -150,7 +130,7 @@ def input_normalize_string(text_input: str) -> str:
     return ' '.join(sorted(text_input.lower().split()))
 
 
-def levenshtein_ratio(first_string: str, second_string: str) -> float:
+def levenshtein_ratio(first_string, second_string):
     """
     Calculate the Levenshtein distance ratio between two strings.
 
@@ -167,7 +147,7 @@ def levenshtein_ratio(first_string: str, second_string: str) -> float:
     return SequenceMatcher(None, first_string, second_string).ratio()
 
 
-def find_unique_words(possible_commands: List[str]) -> set:
+def find_unique_words(possible_commands):
     """
     Find words that appear only once across all possible commands.
 
@@ -181,7 +161,7 @@ def find_unique_words(possible_commands: List[str]) -> set:
     word_count = Counter(all_words)
     return {word for word, count in word_count.items() if count == 1}
 
-def find_best_match(user_input: str, possible_commands: List[str]) -> Optional[str]:
+def find_best_match(user_input, possible_commands):
     """
     Find the best matching command based on user input and a list of possible
     commands.
@@ -256,7 +236,37 @@ def find_best_match(user_input: str, possible_commands: List[str]) -> Optional[s
         return None
 
 
+# Managing Game Map and other Settings:
+# -------------------------------------
+class game_settings:
+    """Class to hold default map settings for the Battleship game.
 
+    Attributes:
+        height (int): The height of the map (number of rows).
+        width (int): The width of the map (number of columns).
+        symbol (str): The default symbol to display on the map.
+        gaps (bool): Whether to include gaps between ships.
+        io_style (list): Input-output style ['Row', 'Column'] or ['Column', 'Row'].
+        row_labels (list): List of row index labels.
+        col_labels (list): List of column index labels.
+    """
+
+    def __init__(self,
+                 height=10,
+                 width=10,
+                 symbol="?",
+                 gaps=True,
+                 io_style=["Row", "Column"],
+                 row_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                 col_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]):
+        """Initialize the default map settings with default or provided values."""
+        self.height = height
+        self.width = width
+        self.symbol = symbol
+        self.gaps = gaps
+        self.io_style = io_style.copy()  # Create a copy to avoid reference issues
+        self.row_labels = row_labels.copy()
+        self.col_labels = col_labels.copy()
 
 
 # Ship managing functions:
@@ -309,8 +319,7 @@ class Ship:
         """
         self.cell_coordinates = coordinates
 
-    def get_coordinates_by_single_coordinate(
-            self, single_coordinate: Tuple[int, int]) -> List[Tuple[int, int]]:
+    def get_coordinates_by_single_coordinate(self, single_coordinate):
         """
         Get the full list of coordinates for the ship based on a single
         coordinate.
@@ -334,7 +343,7 @@ class Ship:
             coordinates_list = self.cell_coordinates
         return coordinates_list
 
-    def set_alignment(self, alignment: str) -> None:
+    def set_alignment(self, alignment):
         """
         Set the alignment of the ship and update its color based on the
         alignment.
@@ -349,7 +358,7 @@ class Ship:
         elif alignment == "Vertical":
             self.color = DEFAULT_COLORS["DarkGreen"]
 
-    def set_sunk(self) -> None:
+    def set_sunk(self):
         """
         Update the ship's status to indicate that it has been sunk.
 
@@ -364,7 +373,7 @@ class Ship:
         self.sunk = True
         self.color = DEFAULT_COLORS["DarkRed"]
 
-    def get_symbols(self) -> List[str]:
+    def get_symbols(self):
         """
         Get symbols for all ship cells based on its hit status and alignment.
 
@@ -423,7 +432,7 @@ class Fleet:
     for the Battleship game.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         """
         Initialize an empty Fleet object.
         Variables:
@@ -432,7 +441,7 @@ class Fleet:
         """
         self.ships: List[Ship] = []
 
-    def add_ship(self, ship: Ship) -> None:
+    def add_ship(self, ship):
         """
         Add a Ship object to the fleet.
         Parameters:
@@ -440,7 +449,7 @@ class Fleet:
         """
         self.ships.append(ship)
 
-    def remove_ship(self, name: str) -> bool:
+    def remove_ship(self, name):
         """
         Remove one instance of a ship by its name from the fleet.
         Parameters:
@@ -454,8 +463,7 @@ class Fleet:
                 return True
         return False
 
-    def get_ship(self, name: str, is_deployed: bool = False) \
-            -> Union[Ship, None]:
+    def get_ship(self, name, is_deployed):
         """
         Retrieve a Ship object from the fleet by its name and deployment
         status.
@@ -474,7 +482,7 @@ class Fleet:
                 return ship
         return None
 
-    def get_ship_quantity(self, name: str) -> int:
+    def get_ship_quantity(self, name):
         """
         Get the quantity of a specific type of ship in the fleet.
         Parameters:
@@ -488,8 +496,7 @@ class Fleet:
                 count += 1
         return count
 
-    def get_ship_quantity_by_sunk_status(self, name: str,
-                                         is_sunk: bool = False) -> int:
+    def get_ship_quantity_by_sunk_status(self, name, is_sunk):
         """
         Get the quantity of a specific type of ship in the fleet based on
         its sunk status.
@@ -509,10 +516,9 @@ class Fleet:
                 count += 1
         return count
 
-    def get_ship_quantity_by_deployed_status(self, name: str,
-                                             is_deployed: bool = False) -> int:
+    def get_ship_quantity_by_deployed_status(self, name, is_deployed):
         """
-        Get the quantity of a specific type of ship in the fleet based on 
+        Get the quantity of a specific type of ship in the fleet based on
         its deployed status.
 
         Parameters:
@@ -521,7 +527,7 @@ class Fleet:
                 deployed. Default is False, which counts not-deployed ships.
 
         Returns:
-            int: The number of ships of this type in the fleet based on 
+            int: The number of ships of this type in the fleet based on
                 deployed status.
         """
         count = 0
@@ -530,8 +536,7 @@ class Fleet:
                 count += 1
         return count
 
-    def get_biggest_ship_by_deployed_status(self, is_deployed: bool = False) \
-            -> Union[Ship, None]:
+    def get_biggest_ship_by_deployed_status(self, is_deployed):
         """
         Get the biggest ship in the fleet based on the deployed status.
 
@@ -561,7 +566,7 @@ class Fleet:
 
         return biggest_ship
 
-    def __str__(self) -> str:
+    def __str__(self):
         """
         Provide a string representation of the Fleet object.
 
@@ -734,8 +739,7 @@ class Fleet:
 
             self.fleet_print_coordinates(conditions, info)
 
-    def fleet_print_coordinates(self, conditions: List[str],
-                                info: Dict[str, any]) -> None:
+    def fleet_print_coordinates(self, conditions, info):
         """
         Print the coordinates for each ship based on the given conditions.
 
@@ -792,7 +796,7 @@ def create_default_fleet() -> Fleet:
 
 # Map manipulating functions
 # --------------------------
-def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
+def create_map(height, width, symbol):
     """
     Initialize a 2D map with a default symbol.
 
@@ -813,8 +817,7 @@ def create_map(height: int, width: int, symbol: str) -> List[List[str]]:
     return [[symbol for _ in range(height)] for _ in range(width)]
 
 
-def find_max_label_length(map_size: int,
-                          index_label: List[Union[int, str]]) -> int:
+def find_max_label_length(map_size, index_label):
     """
     Find the maximum length of index labels for a given map size.
 
@@ -841,9 +844,8 @@ def find_max_label_length(map_size: int,
     return max_length
 
 
-def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
-                   label_left: str, label_right: str, game_map_settings,
-                   gap=10) -> None:
+def print_two_maps(map_left, map_right, label_left, label_right,
+                   row_index_label, column_index_label, gap=10):
     """
     Print two 2D maps side-by-side with dynamically centered labels and a
     customizable gap.
@@ -861,8 +863,7 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
 
     # Constants for character dimensions and formatting
     char_width = len("X")
-    row_index_label = game_map_settings[5][0]
-    column_index_label = game_map_settings[5][1]
+
 
     # Calculate the maximum number of digits in row and column indexes
     num_digits_map_width = find_max_label_length(len(map_left[0]),
@@ -928,17 +929,15 @@ def print_two_maps(map_left: List[List[str]], map_right: List[List[str]],
         print()
 
 
-def print_map_and_list(map_left: List[List[str]], instructions: List[str],
-                       label_left: str, label_instructions: str,
-                       game_map_settings,
-                       gap=10) -> None:
+def print_map_and_list(map_left, list_text, label_left, label_instructions,
+                       row_index_label, column_index_label, gap=10):
     """
     Print a 2D map on the left and a list of instructions on the right with
     dynamically centered labels and a customizable gap.
 
     Args:
         map_left: A 2D list representing the map.
-        instructions: A list of strings representing the instructions.
+        list_text: A list of strings representing the instructions.
         label_left: Label for the map.
         label_instructions: Label for the instructions.
         game_map_settings: Game map settings including row and column index
@@ -947,8 +946,7 @@ def print_map_and_list(map_left: List[List[str]], instructions: List[str],
         Default is 10.
     """
     char_width = len("X")
-    row_index_label = game_map_settings[5][0]
-    column_index_label = game_map_settings[5][1]
+
     num_digits_map_width = find_max_label_length(len(map_left[0]),
                                                  column_index_label)
     num_digits_map_height = find_max_label_length(len(map_left),
@@ -980,19 +978,19 @@ def print_map_and_list(map_left: List[List[str]], instructions: List[str],
                 num_digits_map_width + char_width - (char_width - width)),
                 end=" ")
         print(gap_str, end="")
-        instruction = instructions[row_index] if row_index < len(
-            instructions) else ''
+        instruction = list_text[row_index] if row_index < len(
+            list_text) else ''
         print(instruction.ljust(40), end="")
         print()
-    for row_index in range(len(map_left), len(instructions)):
+    for row_index in range(len(map_left), len(list_text)):
         print(" " * (num_digits_map_height + len(row_index_separator) +
                      len(map_left[0]) * (
                              num_digits_map_width + char_width + 1) +
                      gap), end="")
-        print(instructions[row_index].ljust(40))
+        print(list_text[row_index].ljust(40))
 
 
-def find_max_column_width(table: List[List[Union[str, int]]]) -> List[int]:
+def find_max_column_width(table):
     """
     Find the maximum width for each column in the table.
 
@@ -1008,9 +1006,8 @@ def find_max_column_width(table: List[List[Union[str, int]]]) -> List[int]:
             max_widths[i] = max(max_widths[i], len(str(cell)))
     return max_widths
 
-def print_map_and_table(map_left: List[List[str]], table: List[List[Union[
-                        str, int]]], label_left: str, label_table: str,
-                        game_map_settings: List, gap: int = 10) -> None:
+def print_map_and_table(map_left, table, label_left, label_table,
+                        row_index_label, column_index_label, gap: int = 10):
     """
     Print a 2D map on the left and a table on the right with dynamically
     centered labels and a customizable gap.
@@ -1025,8 +1022,7 @@ def print_map_and_table(map_left: List[List[str]], table: List[List[Union[
     """
     # Constants for character dimensions and formatting
     char_width = len("X")
-    row_index_label = game_map_settings[5][0]
-    column_index_label = game_map_settings[5][1]
+
     num_digits_map_width = find_max_label_length(len(map_left[0]), column_index_label)
     num_digits_map_height = find_max_label_length(len(map_left), row_index_label)
     max_col_widths = find_max_column_width(table)
@@ -1082,10 +1078,8 @@ def print_map_and_table(map_left: List[List[str]], table: List[List[Union[
 
 
 
-def map_calculate_max_dimensions(map_height: int, map_width: int, gap: int,
-                                 row_index_label: List[Union[int, str]],
-                                 column_index_label: List[
-                                     Union[int, str]]) -> (int, int):
+def map_calculate_max_dimensions(map_height, map_width, gap, row_index_label,
+                                 column_index_label):
     """
     Calculate the maximum map dimensions that can fit in the terminal.
 
@@ -1128,7 +1122,7 @@ def map_calculate_max_dimensions(map_height: int, map_width: int, gap: int,
 # -----------------------
 
 
-def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
+def cpu_deploy_all_ships(map_game, fleet, gaps, symbol):
     """
     Deploy all CPU ships on the map.
 
@@ -1158,7 +1152,8 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
                 ship_size = ship_obj.size
 
                 # Attempt to deploy the ship and get alignment and coordinates
-                return_result = cpu_deploy_single_ship(map_game, ship_size)
+                return_result = cpu_deploy_single_ship(map_game, ship_size,
+                                                       symbol)
 
                 if return_result is False:
                     # Can't deploy ships, no coordinates found, return False
@@ -1174,11 +1169,11 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
             symbols_list = ship_obj.get_symbols()
 
             if gaps:
-                symbol = "x"
+                symbol_space= "x"
 
                 map_game = map_allocate_empty_space_for_ship(map_game,
                                                              coordinates_list,
-                                                             symbol)
+                                                             symbol_space)
 
             map_game = map_show_symbols(map_game, coordinates_list,
                                         symbols_list)
@@ -1188,9 +1183,7 @@ def cpu_deploy_all_ships(map_game: List[List[str]], fleet: Fleet, gaps=True):
             return False  # Return False on error
 
 
-def map_show_symbols(map_game: List[List[str]],
-                     coordinates_list: List[Tuple[int, int]],
-                     symbols_list: List[str]) -> List[List[str]]:
+def map_show_symbols(map_game, coordinates_list, symbols_list):
     """
     Update the game map by placing the symbols of a ship at the specified
     coordinates.
@@ -1228,8 +1221,7 @@ def map_show_symbols(map_game: List[List[str]],
     return map_game  # Return the updated game map
 
 
-def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
-        Union)[Tuple[str, List[Tuple[int, int]]], bool]:
+def cpu_deploy_single_ship(map_game, ship_size, symbol):
     """
     Deploy a single ship of a given size on the game map.
 
@@ -1259,7 +1251,7 @@ def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
     """
 
     # Get potential coordinates and alignment for the ship
-    return_result = cpu_deploy_get_coordinates(map_game, ship_size)
+    return_result = cpu_deploy_get_coordinates(map_game, ship_size, symbol)
 
     # Check if coordinates are found
     if not return_result:
@@ -1282,31 +1274,7 @@ def cpu_deploy_single_ship(map_game: List[List[str]], ship_size: int) -> (
         return alignment, ship_coordinate_list
 
 
-def search_coordinates(map_game: List[List[str]], ship_size: int,
-                       alignment: str) -> Union[List[Tuple[int, int]], None]:
-    """
-    Search for suitable coordinates based on a given alignment.
-
-    Args:
-        map_game (List[List[str]]): The 2D game map.
-        ship_size (int): The size of the ship.
-        alignment (str): The alignment ("Horizontal" or "Vertical").
-
-    Returns:
-        List[Tuple[int, int]] or None: A list of coordinates if found,
-        otherwise None.
-    """
-    if alignment == "Vertical":
-        return search_pattern(map_game, ship_size, 1)
-    elif alignment == "Horizontal":
-        return search_pattern(map_game, 1, ship_size)
-    return None
-
-
-def cpu_deploy_get_coordinates(
-        map_game: List[List[str]],
-        ship_size: int
-) -> Union[Tuple[str, List[Tuple[int, int]]], bool]:
+def cpu_deploy_get_coordinates(map_game, ship_size, symbol):
     """
     Determine suitable coordinates for deploying a single ship on the game map.
 
@@ -1322,7 +1290,7 @@ def cpu_deploy_get_coordinates(
     """
     # Case for ship of size 1
     if ship_size == 1:
-        result = search_pattern(map_game, 1, 1)
+        result = search_pattern(map_game, 1, 1, symbol)
         if not result:
             return False
         return "Single", result
@@ -1336,7 +1304,7 @@ def cpu_deploy_get_coordinates(
 
     result = search_pattern(map_game,
                             1 if alignment == "Horizontal" else ship_size,
-                            1 if alignment == "Vertical" else ship_size)
+                            1 if alignment == "Vertical" else ship_size, symbol)
     if result:
         return alignment, result
 
@@ -1344,14 +1312,15 @@ def cpu_deploy_get_coordinates(
     alignment = alignments[0]  # Only one item should be left
     result = search_pattern(map_game,
                             1 if alignment == "Horizontal" else ship_size,
-                            1 if alignment == "Vertical" else ship_size)
+                            1 if alignment == "Vertical" else ship_size,
+                            symbol)
     if result:
         return alignment, result
 
     return False  # No suitable coordinates found
 
 
-def search_pattern(map_game, height, width):
+def search_pattern(map_game, height, width, symbol_to_search):
     """
     Search for occurrences of a pattern of 'default symbol' on the map and
     return their coordinates.
@@ -1367,8 +1336,6 @@ def search_pattern(map_game, height, width):
         height (int): The height of the pattern to search for.
         width (int): The width of the pattern to search for.
 
-    Global Variables:
-        DEFAULT_MAP_SETTINGS (List): Default settings for Map
 
     Returns:
         List[Tuple[int, int]]: A list of coordinates (row, col) where the
@@ -1376,8 +1343,6 @@ def search_pattern(map_game, height, width):
                                Returns an empty list if no pattern is found.
     """
 
-    # Reference the global variable for the default symbol
-    global DEFAULT_MAP_SETTINGS
 
     # Retrieve the dimensions of the game map
     map_height, map_width = len(map_game), len(map_game[0])
@@ -1387,7 +1352,7 @@ def search_pattern(map_game, height, width):
     coordinates = []
 
     # Create the pattern using list comprehension
-    pattern = [DEFAULT_MAP_SETTINGS[2] * width for _ in range(height)]
+    pattern = [symbol_to_search * width for _ in range(height)]
 
     # Traverse the map to find matching patterns
     for row in range(map_height - height + 1):
@@ -1409,8 +1374,7 @@ def search_pattern(map_game, height, width):
 # Various helping functions
 # ------------------------------
 
-def create_coordinate_list(row: int, column: int, alignment: str,
-                           ship_size: int) -> List:
+def create_coordinate_list(row, column, alignment, ship_size):
     """
     Create a list of coordinates where the ship will be placed on the map.
 
@@ -1451,8 +1415,7 @@ def create_coordinate_list(row: int, column: int, alignment: str,
     return coordinates_list
 
 
-def map_allocate_empty_space_for_ship(map_game: List[List[str]],
-                                      coordinates_list: List, symbol: str):
+def map_allocate_empty_space_for_ship(map_game, coordinates_list, symbol):
     """
     Allocate empty space around a ship on a 2D map.
 
@@ -1561,20 +1524,24 @@ def game_instructions():
     # Print Acid affect
     # print_acid_effect()
 
-    # create game map settings just for current game session
-    global DEFAULT_MAP_SETTINGS
-    game_map_settings = DEFAULT_MAP_SETTINGS
+    # Create an instance with default settings
+    current_game_settings = game_settings()
+
+
+
+
     while True:
         clear_terminal()
-        tmp_map = tmp_ships_on_map(game_map_settings)
+        tmp_map = tmp_ships_on_map(current_game_settings)
 
-        print_map_and_list(tmp_map, LIST_INSTRUCTIONS, "Ships on Map",
-                           "Instructions", game_map_settings, 5)
+        (print_map_and_list(tmp_map, LIST_INSTRUCTIONS, "Ships on Map",
+                           "Instructions", current_game_settings.row_labels,
+                            current_game_settings.col_labels, 5))
 
         try:
             user_input = input()
             if user_input.upper() in ["Y", "YES"]:
-                game_map_settings = game_change_settings(game_map_settings)
+                game_map_settings = game_change_settings(current_game_settings)
 
         except KeyboardInterrupt:
             clear_terminal()
@@ -1582,30 +1549,31 @@ def game_instructions():
             return False  # Return False to indicate interruption
 
 
-def game_change_settings(game_map_settings):
+def game_change_settings(current_game_settings):
 
     while True:
         clear_terminal()
-        tmp_map = tmp_ships_on_map(game_map_settings)
+        tmp_map = tmp_ships_on_map(current_game_settings)
 
         print_map_and_list(tmp_map, LIST_GAME_SETTINGS_CHANGES, "Ships on Map",
-                           "Settings", game_map_settings, 5)
+                           "Settings", current_game_settings.row_labels,
+                           current_game_settings.col_labels, 5)
 
         try:
             user_input = input()
             if len(user_input) == 1:
                 if user_input == "0":
-                    return game_map_settings
+                    return current_game_settings
                 print(user_input)
             else:
-                user_command_input(game_map_settings, user_input)
+                user_command_input(current_game_settings, user_input)
 
 
         except KeyboardInterrupt:
             clear_terminal()
             print("You have terminated game settings changes, I will return "
                   "back settings that I have at the moment")
-            return game_map_settings  # Return False to indicate interruption
+            return False  # Return False to indicate interruption
 
 
 def user_command_input(game_map_settings, user_input):
@@ -1625,14 +1593,16 @@ def user_command_input(game_map_settings, user_input):
                                "start game    reset settings"]
 
         else:
-            user_input_list = [f' You have entered: {user_input}', "",
+            user_input_list = [f' You have entered: \u001b[33m'
+                               f'{user_input}\u001b', "",
                                 "I believe you wanted to say:", "",
                                 f'    {user_command}', "",
                                 "If I am correct, just press ENTER", "",
                                 "type 0 to go back"]
 
         print_map_and_list(tmp_map, user_input_list, "Ships on Map",
-                           "User Command", game_map_settings, 5)
+                           "User Command", game_map_settings.row_labels,
+                           game_map_settings.col_labels, 5)
 
         try:
             user_input = input()
@@ -1661,7 +1631,7 @@ def execute_user_command(user_command, game_map_settings):
     elif user_command == "delete ship":
         print("function to execute delete ship")
     elif user_command == "change map size":
-        print("function to execute change map size")
+        settings_map_size_change(game_map_settings)
     elif user_command == "gaps between ships":
         print("function to execute gaps between ships")
     elif user_command == "change coordinate labels":
@@ -1674,21 +1644,40 @@ def execute_user_command(user_command, game_map_settings):
         print("function to execute reset settings")
 
 
+def settings_map_size_change(game_map_settings):
+    clear_terminal()
+    tmp_map = tmp_ships_on_map(game_map_settings)
+    heigth = game_map_settings.height
+    width = game_map_settings.width
+    text_list = [f'Current game settings are set to:',"",
+                 "Map Dimensions:", "",
+                 f'Height: {heigth}  Width: {width}',"",
+                 "If you would like to change it,",
+                 "please type height and width",
+                 "separated by comma"]
+    print_map_and_list(tmp_map, text_list, "Ships on Map",
+                       "Change Map Size", game_map_settings.row_labels,
+                       game_map_settings.col_labels, 5)
+    user_input = input()
 
 
-def check_fleet_fits_map(map_game, fleet, game_map_settings):
+
+
+
+
+def check_fleet_fits_map(map_game, fleet, width, height, symbol, gaps):
     # this function will use cpu_deploy_all_ships in loop for 50 times,
     # till ships are deployed, if after 50 attempts no luck to deploy all of
     # them, it means ships do not fit on map, player has to reduce fleet
     for _ in range(50):
-        tmp_game_fleet = create_default_fleet()
+        tmp_fleet = fleet
 
         # Create a new game map of size 10x10
-        tmp_map_game = create_map(10, 10, game_map_settings[2])
+        tmp_map = map_game
 
         # Deploy all ships on the game map
-        map_game = cpu_deploy_all_ships(tmp_map_game, tmp_game_fleet,
-                                    game_map_settings[3])
+        map_game = cpu_deploy_all_ships(tmp_map, tmpfleet,
+                                    gaps, symbol)
         if not map_game:
             continue
         else:
@@ -1702,9 +1691,7 @@ def check_fleet_fits_map(map_game, fleet, game_map_settings):
 
 
 
-def tmp_ships_on_map(game_map_settings: List[str]) -> Union[bool, Tuple[List[
-                                                    List[Union[str, int]]],
-                                                    List[str]]]:
+def tmp_ships_on_map(game_map_settings):
     """
     Generate a temporary fleet of ships and display them on a map.
     This function provides a new map with a different pattern of ships each
@@ -1720,15 +1707,19 @@ def tmp_ships_on_map(game_map_settings: List[str]) -> Union[bool, Tuple[List[
             game settings.
     """
 
+    height = game_map_settings.height
+    width = game_map_settings.width
+    gaps = game_map_settings.gaps
+    symbol = game_map_settings.symbol
+
     # Create a default fleet for the game
     tmp_game_fleet = create_default_fleet()
 
     # Create a new game map of size 10x10
-    tmp_map_game = create_map(10, 10, game_map_settings[2])
+    tmp_map_game = create_map(height, width, symbol)
 
     # Deploy all ships on the game map
-    map_game = cpu_deploy_all_ships(tmp_map_game, tmp_game_fleet,
-                                    game_map_settings[3])
+    map_game = cpu_deploy_all_ships(tmp_map_game, tmp_game_fleet, gaps, symbol)
 
     # Check if all ships were successfully deployed
     if not map_game:
@@ -1749,27 +1740,34 @@ def start_game():
 
     # create game map settings just for current game session
     global DEFAULT_MAP_SETTINGS
-    game_map_settings = DEFAULT_MAP_SETTINGS
+    current_game_settings = game_settings()
 
     game_fleet_settings = create_default_fleet()
 
-    map_cpu_display = create_map(10, 10,
-                                 game_map_settings[2])
+    map_cpu_display = create_map(current_game_settings.height,
+                                 current_game_settings.width,
+                                 current_game_settings.symbol)
 
     map_cpu_display = cpu_deploy_all_ships(map_cpu_display,
-                                           game_fleet_settings)
+                                           game_fleet_settings,
+                                           current_game_settings.gaps,
+                                           current_game_settings.symbol)
     if not map_cpu_display:
         print(" cpu can not deploy all ships, do not fit")
         return False
 
-    print_map_and_list(map_cpu_display, LIST_INSTRUCTIONS, "Ships on Map",
-                       "Instructions", game_map_settings, 10)
+    """print_map_and_list(map_cpu_display, LIST_INSTRUCTIONS, "Ships on Map",
+                       "Instructions", game_map_settings, 10)"""
 
-    # print_two_maps(map_cpu_hidden, map_cpu_display, "Hidden", "Display",
-    # game_map_settings, 10)
+    print_two_maps(map_cpu_display, map_cpu_display, "Hidden", "Display",
+                   current_game_settings.row_labels,
+                   current_game_settings.col_labels,
+                   10)
 
-    # game_fleet_settings.print_fleet(["deployed_qty", 
+    # game_fleet_settings.print_fleet(["deployed_qty",
     # "deployed_coordinates"], game_map_settings)
 
 
 game_instructions()
+
+#start_game()
