@@ -13,6 +13,9 @@ import math
 import shutil
 from collections import defaultdict
 from collections import Counter
+import string
+from io import StringIO
+import sys
 
 # ANSI color codes used for visual representation of different ship statuses
 DEFAULT_COLORS: Dict[str, str] = {
@@ -48,9 +51,9 @@ LIST_INSTRUCTIONS = [
     "1. Ships can be \u001b[34mHORIZONTAL\u001b[0m or \u001b["
     "32mVERTICAL\u001b[0m",
     "2. Ships can \u001b[31mNOT\u001b[0m be touching each other",
-    "3. Default game map is size 10 by 10",
-    "4. Coordinate Entering style:",
-    f'  COLUMN , COMMA, ROW',
+    "3.Default game map is size 10 by 10",
+    "4.Coordinate Entering style:",
+    "COLUMN , COMMA, ROW",
     "5. \u001b[31mDAMAGED\u001b[0m ships will be green color",
     "",
     "To adjust game settings type \u001b[33mY\u001b["
@@ -113,6 +116,60 @@ def clear_terminal():
 
 # User Input Processing Functions
 # -------------------------------
+
+
+def validate_user_input(input_str, parts, type=None):
+    """
+    Validates user input by splitting it into a specified number of parts and
+    optionally verifies their type.
+
+    Parameters:
+        input_str (str): The user-provided input string.
+        parts (int): The expected number of parts to split the input into.
+        type (str, optional): The expected data type for each part, currently
+        supports only 'integer'.
+
+    Returns:
+        tuple: A tuple containing three elements:
+            - A boolean indicating if the input is valid.
+            - A tuple of the split parts.
+            - A list of string messages indicating validation for each part.
+    """
+
+    # Use a regular expression to split the input into parts by any
+    # non-alphanumeric character,
+    # while also removing any empty strings.
+    split_input = re.split(r'[^A-Za-z0-9]+', input_str)
+    # Initialize a flag to keep track of whether the entire input is valid
+    input_valid = True
+
+    # Initialize a list to hold text that describes the validation status for
+    # each part
+    output_text = []
+
+    # Check if the number of parts obtained from the split operation matches
+    # the expected number of parts
+    if len(split_input) != parts:
+        output_text.append(f'Input should be split into {parts} parts.')
+        return False, tuple(split_input), output_text
+
+    # If a specific data type is expected for each part, perform type
+    # validation
+    if type == 'integer':
+        for i, part in enumerate(split_input):
+            # Check if the part is an integer
+            if not part.isdigit():
+                output_text.append(f'Your input "{part}" is NOT an Integer.')
+                input_valid = False  # Mark the input as invalid if even one
+            # part fails the type check
+            else:
+                # Convert the part to an integer for future use
+                split_input[i] = int(part)
+
+    # Return the final validity flag, the tuple of validated parts, and the
+    # list of validation messages
+    return input_valid, tuple(split_input), output_text
+
 
 def input_normalize_string(text_input):
     """
@@ -238,6 +295,7 @@ def find_best_match(user_input, possible_commands):
 
 # Managing Game Map and other Settings:
 # -------------------------------------
+
 class game_settings:
     """Class to hold default map settings for the Battleship game.
 
@@ -246,7 +304,9 @@ class game_settings:
         width (int): The width of the map (number of columns).
         symbol (str): The default symbol to display on the map.
         gaps (bool): Whether to include gaps between ships.
-        io_style (list): Input-output style ['Row', 'Column'] or ['Column', 'Row'].
+        input_style (list): Input-output style ['Row', 'Column'] or ['Column', 'Row'].
+        row_label_symbol (str or int): Symbol used for row labels.
+        column_label_symbol (str or int): Symbol used for column labels.
         row_labels (list): List of row index labels.
         col_labels (list): List of column index labels.
     """
@@ -256,17 +316,105 @@ class game_settings:
                  width=10,
                  symbol="?",
                  gaps=True,
-                 io_style=["Row", "Column"],
-                 row_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                 col_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]):
-        """Initialize the default map settings with default or provided values."""
-        self.height = height
-        self.width = width
+                 input_style=["Row", "Column"],
+                 row_label_symbol="1",
+                 column_label_symbol="1",
+                 maps_gap = 5):
+        """
+        Initialize the default map settings with default or provided values.
+
+        Args:
+            height (int): The height of the map (number of rows).
+            width (int): The width of the map (number of columns).
+            symbol (str): The default symbol to display on the map.
+            gaps (bool): Whether to include gaps between ships.
+            input_style (list): Input-output style.
+            row_label_symbol (str or int): Symbol used for row labels.
+            column_label_symbol (str or int): Symbol used for column labels.
+        """
+        self._height = height
+        self._width = width
         self.symbol = symbol
         self.gaps = gaps
-        self.io_style = io_style.copy()  # Create a copy to avoid reference issues
-        self.row_labels = row_labels.copy()
-        self.col_labels = col_labels.copy()
+        self.maps_gap = maps_gap
+        self.input_style = input_style.copy()  # Create a copy to avoid reference issues
+        self.row_label_symbol = row_label_symbol
+        self.column_label_symbol = column_label_symbol
+        self.row_labels = []
+        self.col_labels = []
+        self.update_labels()
+
+    def update_labels(self):
+        """Update row_labels and col_labels based on current settings."""
+        self.row_labels = self.generate_labels(self.row_label_symbol, self._height)
+        self.col_labels = self.generate_labels(self.column_label_symbol, self._width)
+
+    def generate_labels(self, symbol, length):
+        """
+        Generate and return labels based on the provided symbol and length.
+
+        Args:
+            symbol (str or int): The symbol to determine the type of labels.
+            length (int): The length to determine the number of labels.
+
+        Returns:
+            list: Generated labels.
+        """
+        if str(symbol).isdigit():
+            return list(range(0, length + 1))
+        else:
+            return list(string.ascii_uppercase)[:length]
+
+    @property
+    def height(self):
+        return self._height
+
+    @height.setter
+    def height(self, value):
+        self._height = value
+        self.update_labels()
+
+    @property
+    def width(self):
+        return self._width
+
+    @width.setter
+    def width(self, value):
+        self._width = value
+        self.update_labels()
+
+    def __str__(self):
+        """
+        Return a string representation of the current settings.
+
+        Returns:
+            str: A formatted string displaying the current settings.
+        """
+        return (f"Height: {self.height}, Width: {self.width}, Symbol: {self.symbol}, "
+                f"Gaps: {self.gaps}, IO Style: {self.input_style}, "
+                f"Row Labels: {self.row_labels}, Column Labels: {self.col_labels}, "
+                f"Row Label Symbol: {self.row_label_symbol}, Column Label Symbol: {self.column_label_symbol}")
+
+    def clone(self):
+        """
+        Create a copy of the current object with the same settings.
+
+        Returns:
+            game_settings: A new game_settings object with the same settings.
+        """
+        return game_settings(
+            height=self.height,
+            width=self.width,
+            symbol=self.symbol,
+            gaps=self.gaps,
+            input_style=self.input_style.copy(),
+            row_label_symbol=self.row_label_symbol,
+            column_label_symbol=self.column_label_symbol
+        )
+
+
+
+
 
 
 # Ship managing functions:
@@ -763,35 +911,41 @@ class Fleet:
                     print(f"    {coord_str}")
 
 
-def create_default_fleet() -> Fleet:
+
+
+def create_fleet(fleet=None) -> Fleet:
     """
-    Create a default fleet with predefined ships.
+   Create a fleet with a given configuration or with predefined ships if no configuration is provided.
 
-    Returns:
-        Fleet: A Fleet object populated with default Ship objects.
+   Parameters:
+       fleet (Fleet, optional): An existing fleet from which to derive the configuration.
+                                If None, the default configuration is used.
 
-    This function performs the following key tasks:
-    1. Initializes an empty Fleet object.
-    2. Defines a list of default ships, specifying their names, sizes,
-    and quantities.
-    3. Iterates through the list of default ships,
-    creating Ship objects and adding them to the fleet.
-    """
-    global DEFAULT_SHIPS
-    # Initialize an empty Fleet object
-    fleet = Fleet()
+   Returns:
+       Fleet: A Fleet object populated with Ship objects as per the provided configuration or default if None.
+   """
+    fleet_config = []
+    if fleet:
+        # Extract the configuration from the existing fleet
+        for ship in fleet.ships:
+            fleet_config.append({"name": ship.name, "size": ship.size, "qty": 1})
+    else:
+        # Use the default configuration
+        fleet_config = DEFAULT_SHIPS
 
-    # Define a list of default ships with their names, sizes, and quantities
-    default_ships = DEFAULT_SHIPS
+    new_fleet = Fleet()
 
-    # Iterate through the list of default ships
-    for ship_info in default_ships:
-        # Create and add each Ship object to the fleet based on its quantity
+    # Create Ship objects based on the provided or default configuration
+    for ship_info in fleet_config:
         for _ in range(ship_info["qty"]):
             ship = Ship(ship_info["name"], ship_info["size"])
-            fleet.add_ship(ship)
+            new_fleet.add_ship(ship)
 
-    return fleet
+    return new_fleet
+
+
+
+
 
 
 # Map manipulating functions
@@ -814,7 +968,7 @@ def create_map(height, width, symbol):
     2D list with the default `symbol`.
     """
 
-    return [[symbol for _ in range(height)] for _ in range(width)]
+    return [[symbol for _ in range(width)] for _ in range(height)]
 
 
 def find_max_label_length(map_size, index_label):
@@ -1078,44 +1232,57 @@ def print_map_and_table(map_left, table, label_left, label_table,
 
 
 
-def map_calculate_max_dimensions(map_height, map_width, gap, row_index_label,
-                                 column_index_label):
+
+
+
+
+def map_calculate_max_dimensions(height, width, label_left,
+                                 label_right, row_index_label, column_index_label, gap):
     """
-    Calculate the maximum map dimensions that can fit in the terminal.
+    Check if two maps of given dimensions and content will fit in the terminal using the simulation approach.
+    Automatically fetches the terminal dimensions.
 
     Args:
-        map_height (int): Current map height.
-        map_width (int): Current map width.
-        gap (int): Gap between the two maps.
-        row_index_label (List[Union[int, str]]): Labels for the row indexes.
-        column_index_label (List[Union[int, str]]): Labels for the column
-        indexes.
+        map_left, map_right, label_left, label_right, row_index_label, column_index_label, gap: Same as for print_two_maps
 
     Returns:
-        tuple: (max_map_width, max_map_height)
+        bool: Whether the two maps will fit in the terminal.
     """
 
-    # Simulated terminal dimensions;
-    # normally you would use shutil.get_terminal_size()
-    terminal_size = (100, 30)  # (columns, lines)
-    terminal_width, terminal_height = terminal_size
+    try:
+        # Redirect stdout to capture the output in a string
+        old_stdout = sys.stdout
+        new_stdout = StringIO()
+        sys.stdout = new_stdout
 
-    # Width of each map cell (including spaces)
-    cell_width = len("X") + 2  # "X" plus two spaces
+        map_left = create_map(height, width, "x")
+        # Run the print_two_maps function to simulate printing
+        print_two_maps(map_left, map_left, label_left, label_right,
+                       row_index_label, column_index_label, gap)
 
-    # Number of characters needed for row and column labels
-    row_label_width = find_max_label_length(map_height, row_index_label)
-    col_label_width = find_max_label_length(map_width, column_index_label)
+        # Reset stdout and get the captured string
+        sys.stdout = old_stdout
+        output_str = new_stdout.getvalue()
 
-    # Calculate max map width
-    max_map_width = (terminal_width - gap - 2 * (row_label_width + 3)) // (
-            2 * (col_label_width + cell_width))
 
-    # Calculate max map height
-    max_map_height = terminal_height - 3  # 1 row for column labels, 1 for
-    # separator, 1 for map label
+        # Automatically get terminal dimensions
+        rows, columns = os.popen('stty size', 'r').read().split()
+        terminal_width = int(columns)
 
-    return max_map_width, max_map_height
+        # Debug print statements
+
+
+        # Check if any line in the captured output exceeds the terminal width
+        will_fit = all(len(line) <= terminal_width for line in output_str.splitlines())
+
+        return will_fit
+
+    except Exception as e:
+        return False
+
+
+
+
 
 
 # CPU game play functions
@@ -1146,6 +1313,8 @@ def cpu_deploy_all_ships(map_game, fleet, gaps, symbol):
             ship_obj = fleet.get_biggest_ship_by_deployed_status(False)
 
             if ship_obj is None:
+
+                map_show_only_ships(map_game, symbol_space, symbol)
                 # If no ships left to deploy, break the loop and return True
                 return map_game  # Deployment is complete
             else:
@@ -1179,9 +1348,15 @@ def cpu_deploy_all_ships(map_game, fleet, gaps, symbol):
                                         symbols_list)
         except Exception as e:
             # Handle exceptions if needed
-            print("An error occurred:", str(e))
             return False  # Return False on error
 
+
+def map_show_only_ships(map, symbol_to_remove, default_symbol):
+    for i in range(len(map)):
+        for j in  range(len(map[0])):
+            if map[i][j] == symbol_to_remove:
+                map[i][j] = default_symbol
+    return map
 
 def map_show_symbols(map_game, coordinates_list, symbols_list):
     """
@@ -1514,6 +1689,9 @@ wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
     clear_terminal()
 
 
+
+
+
 """
 Game Instructions and settings
 ------------------------------
@@ -1525,23 +1703,28 @@ def game_instructions():
     # print_acid_effect()
 
     # Create an instance with default settings
-    current_game_settings = game_settings()
-
-
+    current_game_settings = game_settings() # creating game settings
+    current_game_fleet = create_fleet() #  creating default fleet
 
 
     while True:
         clear_terminal()
-        tmp_map = tmp_ships_on_map(current_game_settings)
+        tmp_fleet = create_fleet(current_game_fleet)
+        tmp_map = tmp_ships_on_map(tmp_fleet, current_game_settings.height,
+                                   current_game_settings.width,
+                                   current_game_settings.gaps,
+                                   current_game_settings.symbol)
 
         (print_map_and_list(tmp_map, LIST_INSTRUCTIONS, "Ships on Map",
-                           "Instructions", current_game_settings.row_labels,
+                            "Instructions", current_game_settings.row_labels,
                             current_game_settings.col_labels, 5))
 
         try:
             user_input = input()
             if user_input.upper() in ["Y", "YES"]:
-                game_map_settings = game_change_settings(current_game_settings)
+                current_game_settings, current_game_fleet = game_change_settings(
+                    current_game_settings,
+                                     current_game_fleet)
 
         except KeyboardInterrupt:
             clear_terminal()
@@ -1549,24 +1732,70 @@ def game_instructions():
             return False  # Return False to indicate interruption
 
 
-def game_change_settings(current_game_settings):
+
+def tmp_ships_on_map(fleet_config, height, width, gaps, symbol):
+    """
+    Generate a temporary fleet of ships and display them on a map.
+    This function provides a new map with a different pattern of ships each
+    time.
+
+    Args:
+        game_settings: The settings for the game map.
+
+    Returns:
+        Union[bool, Tuple[List[List[Union[str, int]]], List]]:
+            Returns False if the CPU cannot deploy all the ships.
+            Otherwise, returns a tuple containing the updated game map and
+            game settings.
+    """
+
+    # Create a default fleet for the game
+    while True
+        # Create a new game map of size 10x10
+        tmp_map_game = create_map(height, width, symbol)
+        tmp_fleet = create_fleet(fleet_config)
+
+        # Deploy all ships on the game map
+        tmp_map_game = cpu_deploy_all_ships(tmp_map_game, tmp_fleet, gaps,
+                                          symbol)
+
+        # Check if all ships were successfully deployed
+        if not tmp_map_game:
+            print("CPU cannot deploy all ships; they do not fit.")
+            continue # continue till map is generated
+        else:
+            return tmp_map_game
+
+
+
+
+def game_change_settings(game_settings, default_fleet):
 
     while True:
         clear_terminal()
-        tmp_map = tmp_ships_on_map(current_game_settings)
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width, game_settings.gaps,
+                                   game_settings.symbol)
 
         print_map_and_list(tmp_map, LIST_GAME_SETTINGS_CHANGES, "Ships on Map",
-                           "Settings", current_game_settings.row_labels,
-                           current_game_settings.col_labels, 5)
+                           "Settings", game_settings.row_labels,
+                           game_settings.col_labels, 5)
 
         try:
             user_input = input()
             if len(user_input) == 1:
                 if user_input == "0":
-                    return current_game_settings
+                    return game_settings, default_fleet
                 print(user_input)
+                if user_input.upper() == "M":
+                    game_settings, default_fleet = settings_map_size_change(game_settings,
+                                                              default_fleet)
+                if user_input.upper() == "S":
+                    game_settings, default_fleet = settings_coordinates(game_settings,
+                                                          default_fleet)
+
             else:
-                user_command_input(current_game_settings, user_input)
+                user_command_input(game_settings, default_fleet, user_input)
 
 
         except KeyboardInterrupt:
@@ -1576,16 +1805,26 @@ def game_change_settings(current_game_settings):
             return False  # Return False to indicate interruption
 
 
-def user_command_input(game_map_settings, user_input):
+
+
+
+
+
+
+
+def user_command_input(game_map_settings, default_fleet, user_input):
 
     while True:
         user_command = find_best_match(user_input.lower(), DICTIONARY_COMMANDS)
         clear_terminal()
-        tmp_map = tmp_ships_on_map(game_map_settings)
+        tmp_map = tmp_ships_on_map(default_fleet, game_map_settings.height,
+                                   game_map_settings.width,
+                                   game_map_settings.gaps,
+                                   game_map_settings.symbol)
         if user_command == None:
             user_input_list = ["I am sorry but i did not understand",
-                               "what You wanted to say","",
-                               "Please try following commands:","",
+                               "what You wanted to say", "",
+                               "Please try following commands:", "",
                                "modify fleet    print fleet",
                                "modify ship    add ship    delete ship",
                                "change map size    gaps between ships",
@@ -1593,12 +1832,11 @@ def user_command_input(game_map_settings, user_input):
                                "start game    reset settings"]
 
         else:
-            user_input_list = [f' You have entered: \u001b[33m'
-                               f'{user_input}\u001b', "",
-                                "I believe you wanted to say:", "",
-                                f'    {user_command}', "",
-                                "If I am correct, just press ENTER", "",
-                                "type 0 to go back"]
+            user_input_list = [f' You have entered: {user_input}', "",
+                               "I believe you wanted to say:", "",
+                               f'    {user_command}', "",
+                               "If I am correct, just press ENTER", "",
+                               "type 0 to go back"]
 
         print_map_and_list(tmp_map, user_input_list, "Ships on Map",
                            "User Command", game_map_settings.row_labels,
@@ -1607,10 +1845,10 @@ def user_command_input(game_map_settings, user_input):
         try:
             user_input = input()
             if user_input.strip() == "":
-                execute_user_command(user_command, game_map_settings)
+                execute_user_command(user_command, game_map_settings, default_fleet)
             if len(user_input) == 1:
                 if user_input == 0:
-                    return game_map_settings
+                    return game_map_settings, default_fleet
                 print(user_input)
 
 
@@ -1619,7 +1857,7 @@ def user_command_input(game_map_settings, user_input):
             print("You have terminated game settings changes")
             return False # Return False to indicate interruption
 
-def execute_user_command(user_command, game_map_settings):
+def execute_user_command(user_command, game_settings, default_fleet):
     if user_command == "modify fleet":
         print("function to execute modify fleet")
     elif user_command == "print fleet":
@@ -1631,7 +1869,7 @@ def execute_user_command(user_command, game_map_settings):
     elif user_command == "delete ship":
         print("function to execute delete ship")
     elif user_command == "change map size":
-        settings_map_size_change(game_map_settings)
+        game_map_settings = settings_map_size_change(game_settings, default_fleet)
     elif user_command == "gaps between ships":
         print("function to execute gaps between ships")
     elif user_command == "change coordinate labels":
@@ -1644,45 +1882,187 @@ def execute_user_command(user_command, game_map_settings):
         print("function to execute reset settings")
 
 
-def settings_map_size_change(game_map_settings):
-    clear_terminal()
-    tmp_map = tmp_ships_on_map(game_map_settings)
-    heigth = game_map_settings.height
-    width = game_map_settings.width
-    text_list = [f'Current game settings are set to:',"",
+def settings_coordinates(game_settings, default_fleet):
+    if game_settings.row_label_symbol.isnumeric():
+        row_label_symbol = "Number"
+    else:
+        row_label_symbol = "Letter"
+    if game_settings.column_label_symbol.isnumeric():
+        column_label_symbol = "Number"
+    else:
+        column_label_symbol = "Letter"
+    text_list = ["Current game Coordinate system is:",
+                 f'Row labels are {row_label_symbol}',
+                 f'Columns are {column_label_symbol}', "",
+                 f'User input is {game_settings.input_style[0]} and '
+                 f'{game_settings.input_style[1]}',"",
+                 "To change Labels type L",
+                 "To change input style press I"]
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width, game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+            print_map_and_list(tmp_map, text_list, "Ships on Map",
+                               "Change Map Size", game_settings.row_labels,
+                               game_settings.col_labels, game_settings.maps_gap)
+            user_input = input()
+            if len(user_input) == 1:
+                if user_input == "0":
+                    return game_settings, default_fleet
+                elif user_input.upper() == "L":
+                    print("hhh")
+
+
+
+
+
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
+
+
+
+
+
+
+
+
+
+
+def settings_map_size_change(game_settings, default_fleet):
+    text_list = ["Current game settings are set to:","",
                  "Map Dimensions:", "",
-                 f'Height: {heigth}  Width: {width}',"",
+                 f'Height: {game_settings.height}  Width: {game_settings.width}',"",
                  "If you would like to change it,",
                  "please type height and width",
                  "separated by comma"]
-    print_map_and_list(tmp_map, text_list, "Ships on Map",
-                       "Change Map Size", game_map_settings.row_labels,
-                       game_map_settings.col_labels, 5)
-    user_input = input()
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width,
+                                   game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+
+            print_map_and_list(tmp_map, text_list, "Ships on Map",
+                               "Change Map Size", game_settings.row_labels,
+                               game_settings.col_labels, game_settings.maps_gap)
+
+            user_input = input()
+            if user_input == "0":
+                return game_settings, default_fleet
+            input_valid, split_input, output_text = validate_user_input(
+                user_input, 2, "integer")
+            if input_valid:
+                # if input is valid, first we will check if map can be
+                # fitted on terminal:
+
+                # create tmp game settings
+                height = int(split_input[0])
+                width = int(split_input[1])
+                tmp_game_settings = game_settings.clone()
+                tmp_game_settings.height = height
+                tmp_game_settings.width = width
+                check_fit = map_calculate_max_dimensions(height,
+                                                         width, "left",
+                                                         "right",
+                                                         tmp_game_settings.row_labels, tmp_game_settings.col_labels, tmp_game_settings.maps_gap)
+                if not check_fit:
+                    t_rows, t_columns = os.popen('stty size', 'r').read(
+
+                    ).split()
+                    terminal_height = int(t_rows)
+                    terminal_width = int(t_columns)
+                    text_list = ["Sorry, but map with given dimensions:",
+                                 f'Height: {height} and Width: {width}', "",
+                                 "Can't align on terminal with dimensions:",
+                                 f'Width: {terminal_width} and Height: '
+                                 f'{terminal_height}']
+                    # now we will check if same map can be fitted,
+                    # if coordinate labels are letters not integers:
+                    if tmp_game_settings.column_label_symbol.isdigit():
+                        tmp_game_settings.column_label_symbol = "a" # seting
+                        # column labels symbol to letter
+                        tmp_game_settings.width = width # generating list
+                        # of column symbols
+                        check_fit_2 = map_calculate_max_dimensions(height,
+                                                                   width, "left",
+                                                                   "right",
+                                                                   tmp_game_settings.row_labels, tmp_game_settings.col_labels, tmp_game_settings.maps_gap)
+                        if not check_fit_2:
+                            add_text_list = ["",
+                                             "Although there is way around "
+                                             "it:", "",
+                                             "You could switch Column Index "
+                                             "Labels",
+                                             "from numbers to letters"]
+                            text_list.extend(add_text_list)
+                elif check_fit:
+                    #now will apply new heigth and width to
+                    # tmp_game_map_settings, so it will regenerate labels if map
+                    # check if map is bigger, if so create new labels
+                    tmp_map = create_map(split_input[0],split_input[1],
+                                         game_settings.symbol)
+                    tmp_fleet = create_fleet()
+                    tmp_map_game = check_fleet_fits_map(tmp_map, tmp_fleet,
+                                                        tmp_game_settings.symbol,
+                                                        tmp_game_settings.gaps)
+                    if not tmp_map_game:
+                        text_list = ["Sorry but I DON'T recommend",
+                                     "Decreasing Map size with current fleet","",
+                                     "If You still want to reduce Map",
+                                     "I suggest reducing fleet first",
+                                     "type :","",
+                                     "change Fleet"]
+                    else: # if all ships fit the fleet, we will apply new map
+                        # dimensions to game setings
+                        game_settings.height = tmp_game_settings.height
+                        game_settings.width = tmp_game_settings.width
+                        text_list = ["Current game settings are set to:","",
+                                     "Map Dimensions:", "",
+                                     f'Height: {game_settings.height}  Width: {game_settings.width}',"",
+                                     "If you would like to change it,",
+                                     "please type height and width",
+                                     "separated by comma"]
+            else:
+                text_list = ["You have entered:", user_input, "",
+                             "Sorry but your entered information is ",
+                             "Not valid", "",
+                             "I have found these errors:",""]
+                text_list.extend(output_text)
+
+
+            # Handle keyboard interrupts to exit the game gracefully
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
 
 
 
 
 
-
-def check_fleet_fits_map(map_game, fleet, width, height, symbol, gaps):
+def check_fleet_fits_map(map_game, fleet_config, symbol, gaps):
     # this function will use cpu_deploy_all_ships in loop for 50 times,
     # till ships are deployed, if after 50 attempts no luck to deploy all of
     # them, it means ships do not fit on map, player has to reduce fleet
     for _ in range(50):
-        tmp_fleet = fleet
+        tmp_fleet = create_fleet(fleet_config)
 
         # Create a new game map of size 10x10
         tmp_map = map_game
 
         # Deploy all ships on the game map
-        map_game = cpu_deploy_all_ships(tmp_map, tmpfleet,
-                                    gaps, symbol)
+        map_game = cpu_deploy_all_ships(tmp_map, tmp_fleet,
+                                        gaps, symbol)
         if not map_game:
             continue
         else:
             return map_game
-    return False # if after 50 attemps fleet doe4s not fit map, we return false
+    return False # if after 50 attempts fleet doe4s not fit map, we return
+    # false
 
 
 
@@ -1691,42 +2071,7 @@ def check_fleet_fits_map(map_game, fleet, width, height, symbol, gaps):
 
 
 
-def tmp_ships_on_map(game_map_settings):
-    """
-    Generate a temporary fleet of ships and display them on a map.
-    This function provides a new map with a different pattern of ships each
-    time.
 
-    Args:
-        game_map_settings: The settings for the game map.
-
-    Returns:
-        Union[bool, Tuple[List[List[Union[str, int]]], List]]:
-            Returns False if the CPU cannot deploy all the ships.
-            Otherwise, returns a tuple containing the updated game map and
-            game settings.
-    """
-
-    height = game_map_settings.height
-    width = game_map_settings.width
-    gaps = game_map_settings.gaps
-    symbol = game_map_settings.symbol
-
-    # Create a default fleet for the game
-    tmp_game_fleet = create_default_fleet()
-
-    # Create a new game map of size 10x10
-    tmp_map_game = create_map(height, width, symbol)
-
-    # Deploy all ships on the game map
-    map_game = cpu_deploy_all_ships(tmp_map_game, tmp_game_fleet, gaps, symbol)
-
-    # Check if all ships were successfully deployed
-    if not map_game:
-        print("CPU cannot deploy all ships; they do not fit.")
-        return False
-    else:
-        return map_game
 
 
 
@@ -1742,7 +2087,7 @@ def start_game():
     global DEFAULT_MAP_SETTINGS
     current_game_settings = game_settings()
 
-    game_fleet_settings = create_default_fleet()
+    game_fleet_settings = create_fleet()
 
     map_cpu_display = create_map(current_game_settings.height,
                                  current_game_settings.width,
@@ -1771,3 +2116,29 @@ def start_game():
 game_instructions()
 
 #start_game()
+
+tomosius_setup = game_settings()
+tomosius_fleet = create_fleet()
+"""tomosius_setup.row_label_symbol = "a"
+tomosius_setup.column_label_symbol = "a"
+tomosius_setup.height = 10
+tomosius_setup.width = 11
+
+tomosius_map = tmp_ships_on_map(tomosius_fleet, tomosius_setup.height,
+                                tomosius_setup.width, tomosius_setup.gaps,
+                                tomosius_setup.symbol)
+tomas_check = map_calculate_max_dimensions(tomosius_setup.height,
+                                           tomosius_setup.width, "jonas", "etras",
+                                           tomosius_setup.row_labels,
+                                           tomosius_setup.col_labels,
+                                           tomosius_setup.maps_gap)
+print(tomas_check)
+
+print_two_maps(tomosius_map, tomosius_map, "jonas", "etras",
+               tomosius_setup.row_labels, tomosius_setup.col_labels, tomosius_setup.maps_gap)
+
+rows, columns = os.popen('stty size', 'r').read().split()
+terminal_height = int(rows)
+terminal_width = int(columns)
+ic(terminal_height, terminal_width)"""
+#tomas = settings_map_size_change(tomosius_setup)
