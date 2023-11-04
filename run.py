@@ -127,13 +127,15 @@ def validate_user_input(input_str, parts, type=None):
         input_str (str): The user-provided input string.
         parts (int): The expected number of parts to split the input into.
         type (str, optional): The expected data type for each part, currently
-                              supports 'integer' and 'alpha' for single UK alphabet letters.
+                              supports 'integer' and 'alpha' for single UK
+                              alphabet letters.
 
     Returns:
         tuple: A tuple containing three elements:
             - A boolean indicating if the input is valid.
             - A tuple of the split parts after type conversion if applicable.
-            - A list of string messages indicating validation status for each part.
+            - A list of string messages indicating validation status for
+            each part.
     """
 
     # Use a regular expression to split the input into parts by any
@@ -142,12 +144,14 @@ def validate_user_input(input_str, parts, type=None):
     # Initialize a flag to keep track of whether the entire input is valid
     input_valid = True
 
-    # Initialize a list to hold text that describes the validation status for each part
+    # Initialize a list to hold text that describes the validation status
+    # for each part
     output_text = []
 
-    # Check if the number of parts obtained from the split operation matches the expected number of parts
+    # Check if the number of parts obtained from the split operation matches
+    # the expected number of parts
     if len(split_input) != parts:
-        output_text.append(f'Input should be split into {parts} parts.')
+        output_text.append(f'I need you to type in {parts} values.')
         return False, tuple(split_input), output_text
 
     # If a specific data type is expected for each part, perform type validation
@@ -177,8 +181,9 @@ def validate_user_input(input_str, parts, type=None):
 
 def validate_values(value1, value2):
     """
-    Validates two values to check whether each is a single-digit number or a single-letter alphabet.
-    Returns a list of warnings if any of these checks fail, with each part of the message not exceeding 38 characters.
+    Validates two values to check whether each is a single-digit number or a 
+    single-letter alphabet. Returns a list of warnings if any of these 
+    checks fail, with each part of the message not exceeding 38 characters.
 
     Parameters:
         value1: The first value to be validated.
@@ -338,7 +343,8 @@ class game_settings:
         width (int): The width of the map (number of columns).
         symbol (str): The default symbol to display on the map.
         gaps (bool): Whether to include gaps between ships.
-        input_style (list): Input-output style ['Row', 'Column'] or ['Column', 'Row'].
+        input_style (list): Input-output style ['Row', 'Column'] or [
+        'Column', 'Row'].
         row_label_symbol (str or int): Symbol used for row labels.
         column_label_symbol (str or int): Symbol used for column labels.
         row_labels (list): List of row index labels.
@@ -852,21 +858,21 @@ class Fleet:
         return formatted_coordinates
 
     def add_coordinates_condition(self, ship_info_list, condition,
-                                  game_map_settings):
+                                  game_settings):
         """
         Add coordinates condition to the ship information list.
 
         Parameters:
             ship_info_list (List[dict]): The list containing ship information.
             condition (str): The condition to filter the coordinates.
-            game_map_settings (List): The game's coordinate style.
+            game_settings (List): The game's coordinate style.
         """
         for info in ship_info_list:
             coordinates = [ship.cell_coordinates for ship in self.ships if
                            ship.name == info['name'] and
                            getattr(ship, condition.split('_')[0])]
             info[condition] = self.format_coordinates(coordinates,
-                                                      game_map_settings)
+                                                      game_settings)
 
     def print_fleet(self, conditions="", game_map_settings=None):
         """
@@ -1205,7 +1211,8 @@ def print_map_and_table(map_left, table, label_left, label_table,
         table: A 2D list representing the table. The first row contains headers.
         label_left: Label for the map.
         label_table: Label for the table.
-        game_map_settings: Game map settings including row and column index labels.
+        game_map_settings: Game map settings including row and column index
+        labels.
         gap: Number of blank spaces between the map and table. Default is 10.
     """
     # Constants for character dimensions and formatting
@@ -1340,6 +1347,7 @@ def cpu_deploy_all_ships(map_game, fleet, gaps, symbol):
     Returns:
         bool: True if deployment is successful, False otherwise.
     """
+    symbol_allocate_space= "x"
     while True:
         try:
             # Get information about the biggest not deployed ship from the
@@ -1348,7 +1356,7 @@ def cpu_deploy_all_ships(map_game, fleet, gaps, symbol):
 
             if ship_obj is None:
 
-                map_show_only_ships(map_game, symbol_space, symbol)
+                map_show_only_ships(map_game, symbol_allocate_space, symbol)
                 # If no ships left to deploy, break the loop and return True
                 return map_game  # Deployment is complete
             else:
@@ -1372,11 +1380,8 @@ def cpu_deploy_all_ships(map_game, fleet, gaps, symbol):
             symbols_list = ship_obj.get_symbols()
 
             if gaps:
-                symbol_space= "x"
-
-                map_game = map_allocate_empty_space_for_ship(map_game,
-                                                             coordinates_list,
-                                                             symbol_space)
+                map_game = map_allocate_empty_space_for_ship(
+                    map_game, coordinates_list, symbol_allocate_space)
 
             map_game = map_show_symbols(map_game, coordinates_list,
                                         symbols_list)
@@ -1513,7 +1518,8 @@ def cpu_deploy_get_coordinates(map_game, ship_size, symbol):
 
     result = search_pattern(map_game,
                             1 if alignment == "Horizontal" else ship_size,
-                            1 if alignment == "Vertical" else ship_size, symbol)
+                            1 if alignment == "Vertical" else ship_size,
+                            symbol)
     if result:
         return alignment, result
 
@@ -1756,9 +1762,9 @@ def game_instructions():
         try:
             user_input = input()
             if user_input.upper() in ["Y", "YES"]:
-                current_game_settings, current_game_fleet = game_change_settings(
-                    current_game_settings,
-                                     current_game_fleet)
+                current_game_settings, current_game_fleet \
+                    =game_change_settings( current_game_settings,
+                                           current_game_fleet)
 
         except KeyboardInterrupt:
             clear_terminal()
@@ -1822,11 +1828,11 @@ def game_change_settings(game_settings, default_fleet):
                     return game_settings, default_fleet
                 print(user_input)
                 if user_input.upper() == "M":
-                    game_settings, default_fleet = settings_map_size_change(game_settings,
-                                                              default_fleet)
+                    game_settings, default_fleet = settings_map_size_change(
+                        game_settings, default_fleet)
                 if user_input.upper() == "S":
-                    game_settings, default_fleet = settings_coordinates(game_settings,
-                                                          default_fleet)
+                    game_settings, default_fleet = settings_coordinates(
+                        game_settings, default_fleet)
 
             else:
                 user_command_input(game_settings, default_fleet, user_input)
@@ -1879,7 +1885,8 @@ def user_command_input(game_map_settings, default_fleet, user_input):
         try:
             user_input = input()
             if user_input.strip() == "":
-                execute_user_command(user_command, game_map_settings, default_fleet)
+                execute_user_command(user_command, game_map_settings,
+                                     default_fleet)
             if len(user_input) == 1:
                 if user_input == 0:
                     return game_map_settings, default_fleet
@@ -1903,7 +1910,8 @@ def execute_user_command(user_command, game_settings, default_fleet):
     elif user_command == "delete ship":
         print("function to execute delete ship")
     elif user_command == "change map size":
-        game_map_settings = settings_map_size_change(game_settings, default_fleet)
+        game_settings = settings_map_size_change(game_settings,
+                                                     default_fleet)
     elif user_command == "gaps between ships":
         print("function to execute gaps between ships")
     elif user_command == "change coordinate labels":
@@ -1940,13 +1948,17 @@ def settings_coordinates(game_settings, default_fleet):
         try:
             print_map_and_list(tmp_map, text_list, "Ships on Map",
                                "Change Map Size", game_settings.row_labels,
-                               game_settings.col_labels, game_settings.maps_gap)
+                               game_settings.col_labels,
+                               game_settings.maps_gap)
             user_input = input()
             if len(user_input) == 1:
                 if user_input == "0":
                     return game_settings, default_fleet
                 elif user_input.upper() == "L":
                     game_settings, default_fleet =  settings_label_change(
+                        game_settings, default_fleet)
+                elif user_input.upper() == "I":
+                    game_settings, default_fleet = settings_input(
                         game_settings, default_fleet)
 
 
@@ -1961,17 +1973,29 @@ def settings_coordinates(game_settings, default_fleet):
 
 
 def settings_label_change(game_settings, default_fleet):
-    text_list_default = [
+    value_0, value_1 = input_output_swap("Row", "Column",
+                                         game_settings.input_style[0],
+                                         game_settings.input_style[1])
+    string_0 = "Row labels are presented as: {}".format("DIGIT" if
+                                                       game_settings.row_label_symbol.isdigit() else "LETTER")
+    string_1 = "Column labels are presented as: {}".format("DIGIT" if
+                                                           game_settings.column_label_symbol.isdigit() else "LETTER")
+    string_0, string_1 = input_output_swap(string_0, string_1,
+                                           game_settings.input_style[0],
+                                           game_settings.input_style[1])
+
+
+
+    text_list = [
         "Current settings for MAP:",
         "",
-        "Row labels are presented as: {}".format("DIGIT" if game_settings.row_label_symbol.isdigit() else "LETTER"),
-        "Column labels are presented as: {}".format("DIGIT" if game_settings.column_label_symbol.isdigit() else "LETTER"),
+        string_0,
+        string_1,
         "",
         "If you want to change it, please type in:",
-        "Row, Column symbols, egzample:",
-        "A,1 = Rows - Letters, Columns - Digits","",
+        f'{value_0}, {value_1} symbols, example:',
+        f'A,1 = {value_0} - Letters, {value_1} - Digits',"",
         "To go to previous menu type 0"]
-    text_list = text_list_default
     while True:
         clear_terminal()
         tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
@@ -1982,25 +2006,61 @@ def settings_label_change(game_settings, default_fleet):
             print_map_and_list(tmp_map, text_list, "Ships on Map",
                                "Change Map Labels",
                                game_settings.row_labels,
-                               game_settings.col_labels, game_settings.maps_gap)
+                               game_settings.col_labels,
+                               game_settings.maps_gap)
             user_input = input()
             #prcessing user input:
             input_valid, split_input, output_text = validate_user_input(
                     user_input, 2,)
             if input_valid:  # if user entered 2 values, we will identify
-        # are they numbers or letters, and are they valid
-                warnings = validate_values(split_input[0], split_input[1])
+            # are they numbers or letters, and are they valid
+                input_0, input_1 = input_output_swap(split_input[0],
+                                                      split_input[1], game_settings.input_style[0],
+                                                      game_settings.input_style[1])
+                warnings = validate_values(input_0, input_1)
                 if not warnings:
-                    game_settings.row_label_symbol = split_input[0]
-                    game_settings.column_label_symbol = split_input[1]
+                    game_settings.row_label_symbol = input_0
+                    game_settings.column_label_symbol = input_1
                     game_settings.update_labels()
-                    text_list = text_list_default
+
+
+                    value_0, value_1 = input_output_swap("Row", "Column",
+                                                         game_settings.input_style[0],
+                                                         game_settings.input_style[1])
+                    string_0 = "Row labels are presented as: {}".format("DIGIT" if
+                                                                        game_settings.row_label_symbol.isdigit() else "LETTER")
+                    string_1 = "Column labels are presented as: {}".format("DIGIT" if
+                                                                           game_settings.column_label_symbol.isdigit() else "LETTER")
+                    string_0, string_1 = input_output_swap(string_0, string_1,
+                                                           game_settings.input_style[0],
+                                                           game_settings.input_style[1])
+
+
+
+                    text_list = [
+                        "Current settings for MAP:",
+                        "",
+                        string_0,
+                        string_1,
+                        "",
+                        "If you want to change it, please type in:",
+                        f'{value_0}, {value_1} symbols, example:',
+                        f'A,1 = {value_0} - Letters, {value_1} - Digits',"",
+                        "To go to previous menu type 0"]
+
+
+
+
+
+
 
                 else:
                     text_list = ["Sorry but there is an error:","",]
                     text_list.extend(warnings)
             else:
-                text_list = ["You did not enter 2 Values"]
+                text_list = output_text
+                print("tomas")
+                print(output_text)
             if user_input == "0":
                 return game_settings, default_fleet
 
@@ -2011,13 +2071,131 @@ def settings_label_change(game_settings, default_fleet):
             return False
 
 
+def settings_input(game_settings, default_fleet):
+    """
+    Prompt the user to change the input style settings for the game.
+
+    This function displays the current input style and allows the user to input
+    a new style. If the input is valid and represents a change, the input style
+    is updated.
+
+    Args:
+        game_settings (game_settings): The game settings object to be updated.
+        default_fleet (list): The default fleet configuration.
+
+    Returns:
+        tuple: Updated game settings and default fleet if the user does not interrupt.
+        bool: False if the user interrupts with a KeyboardInterrupt.
+    """
+
+    # Determine the current input style based on the default settings
+    value_0, value_1 = input_output_swap("Row", "Column",
+                                         game_settings.input_style[0],
+                                         game_settings.input_style[1])
+
+    text_list = [
+        "Current input style:",
+        f'{value_0} , {value_1}', "",
+        "To change, type:",
+        f'{value_1},{value_0} or {value_1[0]},{value_0[0]}', "",
+        "This changes IO style.",
+        "Type 0 for previous menu."
+    ]
+
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width, game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+            print_map_and_list(tmp_map, text_list, "Ships on Map",
+                               "Change Input Style",
+                               game_settings.row_labels,
+                               game_settings.col_labels,
+                               game_settings.maps_gap)
+            user_input = input()
+            if user_input == "0":
+                return game_settings, default_fleet
+            elif user_input.strip() == "":
+                value_0, value_1 = input_output_swap("Row", "Column",
+                                                     game_settings.input_style[0],
+                                                     game_settings.input_style[1])
+                text_list = [
+                    "Current input style:",
+                    f'{value_0} , {value_1}', "",
+                    "To change, type:",
+                    f'{value_1},{value_0} or {value_1[0]},{value_0[0]}', "",
+                    "This changes IO style.",
+                    "Type 0 for previous menu."
+                ]
+            else:
+
+
+                # Check if user has input just 2 values
+                input_valid, split_input, output_text = validate_user_input(
+                    user_input, 2)
+                if input_valid:
+                    # checking if those given 2 values are row and column,
+                    # or at least first letters of those words:
+                    if (split_input[0][0].upper() == value_1[0].upper() and
+                            split_input[1][0].upper() == value_0[0].upper()):
+                        # Update the input style based on user input
+                        game_settings.input_style = [value_1, value_0]
+
+                    # Update the prompt text to reflect the changes
+                    value_0, value_1 = game_settings.input_style
+                    text_list = [
+                        "Current input style:",
+                        f'{value_0} , {value_1}', "",
+                        "To change, type:",
+                        f'{value_1},{value_0} or {value_1[0]},{value_0[0]}', "",
+                        "This changes IO style.",
+                        "Type 0 for previous menu."
+                    ]
+
+                else:
+                    # If values are not understood, show the error message
+                    text_list = output_text
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
+
+
+
+def input_output_swap(input_style1, input_style2, default_style1, default_style2):
+    """
+    Swap input styles if they are in the reverse order of the default styles.
+
+    This function is intended to be used after the input styles have been validated.
+    It checks if the provided input styles are in the reverse order compared to the
+    default styles. If they are, the input styles are swapped to match the default
+    order; otherwise, they are returned as provided.
+
+    Args:
+        input_style1 (str): The first input style potentially to swap.
+        input_style2 (str): The second input style potentially to swap.
+        default_style1 (str): The first default style to compare against.
+        default_style2 (str): The second default style to compare against.
+
+    Returns:
+        (str, str): A tuple of two strings representing the input styles in the correct order.
+    """
+    # Simplify comparison by using the first character of each style, capitalized.
+
+    if default_style1 == "Row" and default_style2 == "Column":
+        return input_style1, input_style2
+    else:
+        return input_style2, input_style1
+
 
 
 
 def settings_map_size_change(game_settings, default_fleet):
     text_list = ["Current game settings are set to:","",
                  "Map Dimensions:", "",
-                 f'Height: {game_settings.height}  Width: {game_settings.width}',"",
+                 f'Height: {game_settings.height} Width:'
+                 f' {game_settings.width}',"",
                  "If you would like to change it,",
                  "please type height and width",
                  "separated by comma"]
@@ -2048,10 +2226,10 @@ def settings_map_size_change(game_settings, default_fleet):
                 tmp_game_settings = game_settings.clone()
                 tmp_game_settings.height = height
                 tmp_game_settings.width = width
-                check_fit = map_calculate_max_dimensions(height,
-                                                         width, "left",
-                                                         "right",
-                                                         tmp_game_settings.row_labels, tmp_game_settings.col_labels, tmp_game_settings.maps_gap)
+                check_fit = map_calculate_max_dimensions(
+                    height, width, "left", "right",
+                    tmp_game_settings.row_labels,
+                    tmp_game_settings.col_labels, tmp_game_settings.maps_gap)
                 if not check_fit:
                     t_rows, t_columns = os.popen('stty size', 'r').read(
 
@@ -2066,14 +2244,15 @@ def settings_map_size_change(game_settings, default_fleet):
                     # now we will check if same map can be fitted,
                     # if coordinate labels are letters not integers:
                     if tmp_game_settings.column_label_symbol.isdigit():
-                        tmp_game_settings.column_label_symbol = "a" # seting
+                        tmp_game_settings.column_label_symbol = "a" # setting
                         # column labels symbol to letter
                         tmp_game_settings.width = width # generating list
                         # of column symbols
-                        check_fit_2 = map_calculate_max_dimensions(height,
-                                                                   width, "left",
-                                                                   "right",
-                                                                   tmp_game_settings.row_labels, tmp_game_settings.col_labels, tmp_game_settings.maps_gap)
+                        check_fit_2 = map_calculate_max_dimensions(
+                            height, width, "left", "right",
+                            tmp_game_settings.row_labels,
+                            tmp_game_settings.col_labels,
+                            tmp_game_settings.maps_gap)
                         if not check_fit_2:
                             add_text_list = ["",
                                              "Although there is way around "
@@ -2083,8 +2262,9 @@ def settings_map_size_change(game_settings, default_fleet):
                                              "from numbers to letters"]
                             text_list.extend(add_text_list)
                 elif check_fit:
-                    #now will apply new heigth and width to
-                    # tmp_game_map_settings, so it will regenerate labels if map
+                    #now will apply new height and width to
+                    # tmp_game_map_settings, so it will regenerate labels if
+                    # map
                     # check if map is bigger, if so create new labels
                     tmp_map = create_map(split_input[0],split_input[1],
                                          game_settings.symbol)
@@ -2100,7 +2280,7 @@ def settings_map_size_change(game_settings, default_fleet):
                                      "type :","",
                                      "change Fleet"]
                     else: # if all ships fit the fleet, we will apply new map
-                        # dimensions to game setings
+                        # dimensions to game settings
                         game_settings.height = tmp_game_settings.height
                         game_settings.width = tmp_game_settings.width
                         text_list = ["Current game settings are set to:","",
@@ -2191,36 +2371,6 @@ def start_game():
                    current_game_settings.col_labels,
                    10)
 
-    # game_fleet_settings.print_fleet(["deployed_qty",
-    # "deployed_coordinates"], game_map_settings)
-
 
 game_instructions()
 
-#start_game()
-
-tomosius_setup = game_settings()
-tomosius_fleet = create_fleet()
-"""tomosius_setup.row_label_symbol = "a"
-tomosius_setup.column_label_symbol = "a"
-tomosius_setup.height = 10
-tomosius_setup.width = 11
-
-tomosius_map = tmp_ships_on_map(tomosius_fleet, tomosius_setup.height,
-                                tomosius_setup.width, tomosius_setup.gaps,
-                                tomosius_setup.symbol)
-tomas_check = map_calculate_max_dimensions(tomosius_setup.height,
-                                           tomosius_setup.width, "jonas", "etras",
-                                           tomosius_setup.row_labels,
-                                           tomosius_setup.col_labels,
-                                           tomosius_setup.maps_gap)
-print(tomas_check)
-
-print_two_maps(tomosius_map, tomosius_map, "jonas", "etras",
-               tomosius_setup.row_labels, tomosius_setup.col_labels, tomosius_setup.maps_gap)
-
-rows, columns = os.popen('stty size', 'r').read().split()
-terminal_height = int(rows)
-terminal_width = int(columns)
-ic(terminal_height, terminal_width)"""
-#tomas = settings_map_size_change(tomosius_setup)
