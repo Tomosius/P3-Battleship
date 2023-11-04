@@ -127,48 +127,82 @@ def validate_user_input(input_str, parts, type=None):
         input_str (str): The user-provided input string.
         parts (int): The expected number of parts to split the input into.
         type (str, optional): The expected data type for each part, currently
-        supports only 'integer'.
+                              supports 'integer' and 'alpha' for single UK alphabet letters.
 
     Returns:
         tuple: A tuple containing three elements:
             - A boolean indicating if the input is valid.
-            - A tuple of the split parts.
-            - A list of string messages indicating validation for each part.
+            - A tuple of the split parts after type conversion if applicable.
+            - A list of string messages indicating validation status for each part.
     """
 
     # Use a regular expression to split the input into parts by any
-    # non-alphanumeric character,
-    # while also removing any empty strings.
+    # non-alphanumeric character, removing any empty strings.
     split_input = re.split(r'[^A-Za-z0-9]+', input_str)
     # Initialize a flag to keep track of whether the entire input is valid
     input_valid = True
 
-    # Initialize a list to hold text that describes the validation status for
-    # each part
+    # Initialize a list to hold text that describes the validation status for each part
     output_text = []
 
-    # Check if the number of parts obtained from the split operation matches
-    # the expected number of parts
+    # Check if the number of parts obtained from the split operation matches the expected number of parts
     if len(split_input) != parts:
         output_text.append(f'Input should be split into {parts} parts.')
         return False, tuple(split_input), output_text
 
-    # If a specific data type is expected for each part, perform type
-    # validation
+    # If a specific data type is expected for each part, perform type validation
     if type == 'integer':
         for i, part in enumerate(split_input):
             # Check if the part is an integer
             if not part.isdigit():
                 output_text.append(f'Your input "{part}" is NOT an Integer.')
-                input_valid = False  # Mark the input as invalid if even one
-            # part fails the type check
+                input_valid = False
             else:
                 # Convert the part to an integer for future use
                 split_input[i] = int(part)
+    elif type == 'alpha':
+        for i, part in enumerate(split_input):
+            # Check if the part is a single letter in the UK alphabet
+            if not part.isalpha() or len(part) != 1:
+                output_text.append(f'Your input "{part}" is NOT a single alphabet letter.')
+                input_valid = False
+            # No conversion needed for alphabet characters
+    elif type is not None:
+        # Raise an error if an unsupported type is specified
+        raise ValueError(f"Unsupported type '{type}'. Supported types are 'integer' and 'alpha'.")
 
-    # Return the final validity flag, the tuple of validated parts, and the
-    # list of validation messages
+    # Return the final validity flag, the tuple of validated parts, and the list of validation messages
     return input_valid, tuple(split_input), output_text
+
+
+def validate_values(value1, value2):
+    """
+    Validates two values to check whether each is a single-digit number or a single-letter alphabet.
+    Returns a list of warnings if any of these checks fail, with each part of the message not exceeding 38 characters.
+
+    Parameters:
+        value1: The first value to be validated.
+        value2: The second value to be validated.
+
+    Returns:
+        list: A list of warnings if the values do not comply with the type rules.
+              An empty list indicates no warnings.
+    """
+    warnings = []
+
+    # Function to add warnings in two parts
+    def add_warnings(value):
+        warnings.extend([f'You have entered {value}', "which is neither a digit nor a letter."])
+
+    # Check each value and add warnings if it's neither a digit nor an alphabet letter
+    if not (value1.isdigit() or value1.isalpha()):
+        add_warnings(value1)
+    if not (value2.isdigit() or value2.isalpha()):
+        add_warnings(value2)
+
+    return warnings
+
+
 
 
 def input_normalize_string(text_input):
@@ -1750,7 +1784,7 @@ def tmp_ships_on_map(fleet_config, height, width, gaps, symbol):
     """
 
     # Create a default fleet for the game
-    while True
+    while True:
         # Create a new game map of size 10x10
         tmp_map_game = create_map(height, width, symbol)
         tmp_fleet = create_fleet(fleet_config)
@@ -1912,7 +1946,8 @@ def settings_coordinates(game_settings, default_fleet):
                 if user_input == "0":
                     return game_settings, default_fleet
                 elif user_input.upper() == "L":
-                    print("hhh")
+                    game_settings, default_fleet =  settings_label_change(
+                        game_settings, default_fleet)
 
 
 
@@ -1925,8 +1960,55 @@ def settings_coordinates(game_settings, default_fleet):
 
 
 
+def settings_label_change(game_settings, default_fleet):
+    text_list_default = [
+        "Current settings for MAP:",
+        "",
+        "Row labels are presented as: {}".format("DIGIT" if game_settings.row_label_symbol.isdigit() else "LETTER"),
+        "Column labels are presented as: {}".format("DIGIT" if game_settings.column_label_symbol.isdigit() else "LETTER"),
+        "",
+        "If you want to change it, please type in:",
+        "Row, Column symbols, egzample:",
+        "A,1 = Rows - Letters, Columns - Digits","",
+        "To go to previous menu type 0"]
+    text_list = text_list_default
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width,
+                                   game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+            print_map_and_list(tmp_map, text_list, "Ships on Map",
+                               "Change Map Labels",
+                               game_settings.row_labels,
+                               game_settings.col_labels, game_settings.maps_gap)
+            user_input = input()
+            #prcessing user input:
+            input_valid, split_input, output_text = validate_user_input(
+                    user_input, 2,)
+            if input_valid:  # if user entered 2 values, we will identify
+        # are they numbers or letters, and are they valid
+                warnings = validate_values(split_input[0], split_input[1])
+                if not warnings:
+                    game_settings.row_label_symbol = split_input[0]
+                    game_settings.column_label_symbol = split_input[1]
+                    game_settings.update_labels()
+                    text_list = text_list_default
+
+                else:
+                    text_list = ["Sorry but there is an error:","",]
+                    text_list.extend(warnings)
+            else:
+                text_list = ["You did not enter 2 Values"]
+            if user_input == "0":
+                return game_settings, default_fleet
 
 
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
 
 
 
