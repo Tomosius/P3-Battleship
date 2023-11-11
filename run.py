@@ -17,6 +17,8 @@ import string
 from io import StringIO
 import sys
 
+
+
 # ANSI color codes used for visual representation of different ship statuses
 DEFAULT_COLORS: Dict[str, str] = {
     "DarkYellow": "\u001b[33m",
@@ -210,126 +212,82 @@ def validate_values(value1, value2):
 
 
 
+
+
+# Define the normalization function
 def input_normalize_string(text_input):
-    """
-    Normalize the command string for easier comparison.
-
-    This function tokenizes the command string, sorts the tokens,
-    and converts them to lowercase for case-insensitive comparison.
-
-    Parameters:
-        text_input (str): The command string to be normalized.
-
-    Returns:
-        str: The normalized command string.
-    """
     return ' '.join(sorted(text_input.lower().split()))
 
-
-def levenshtein_ratio(first_string, second_string):
-    """
-    Calculate the Levenshtein distance ratio between two strings.
-
-    The ratio is a measure of similarity between two strings.
-    A ratio of 1 means the strings are identical.
-
-    Parameters:
-        first_string (str): The first string for comparison.
-        second_string (str): The second string for comparison.
-
-    Returns:
-        float: The Levenshtein distance ratio between the two strings.
-    """
-    return SequenceMatcher(None, first_string, second_string).ratio()
-
-
-def find_unique_words(possible_commands):
-    """
-    Find words that appear only once across all possible commands.
-
-    Parameters:
-        possible_commands (List[str]): A list of possible commands to search.
-
-    Returns:
-        set: A set of unique words.
-    """
-    all_words = [word for command in possible_commands for word in command.split()]
+# Define the function to find unique words
+def find_unique_words(command_dict):
+    all_words = [word for commands in command_dict.values() for command in commands for word in command.split()]
     word_count = Counter(all_words)
     return {word for word, count in word_count.items() if count == 1}
 
-def find_best_match(user_input, possible_commands):
-    """
-    Find the best matching command based on user input and a list of possible
-    commands.
+# Define the main function to find the best match
+def find_best_match(user_input, command_dict):
+    normalized_input = input_normalize_string(user_input)
+    unique_words = find_unique_words(command_dict)
 
-    This function first normalizes the user input and each possible command.
-    It then calculates the Levenshtein distance ratio between the normalized
-    user input and each possible command to find the best match.
+    # If the input is exactly one of the unique words, return the corresponding full command
+    if normalized_input in unique_words:
+        for key, values in command_dict.items():
+            for value in values:
+                if normalized_input in value:
+                    return [key]
+
+    # If the input matches a unique word in any of the commands, return that command
+    for unique_word in unique_words:
+        if unique_word in normalized_input:
+            for key, values in command_dict.items():
+                for value in values:
+                    if unique_word in value:
+                        return [key]
+
+    # If the input is a substring of any of the commands, return those command keys
+    partial_matches = [key for key, values in command_dict.items() if any(normalized_input in command for command in values)]
+    if partial_matches:
+        return partial_matches
+
+    # Otherwise, check for the closest match in the entire command dictionary
+    max_ratio = 0
+    best_match = None
+    for key, values in command_dict.items():
+        for command in values:
+            ratio = SequenceMatcher(None, normalized_input, input_normalize_string(command)).ratio()
+            if ratio > max_ratio:
+                max_ratio = ratio
+                best_match = key
+
+    return [best_match] if best_match else None
+
+
+def create_ship_dictionary_from_fleet(fleet):
+    """
+    Creates a dictionary from a Fleet instance where the keys are ship names and the values are
+    lists containing the ship names in various common formats (e.g., with spaces, lowercase).
 
     Parameters:
-        user_input (str): The user's input string
-        possible_commands (List[str]): A list of possible commands to match
-            against.
+        fleet (Fleet): An instance of the Fleet class.
 
     Returns:
-        Optional[str]:
-        The best-matching command, or:
-        None if no reasonable match is found.
+        dict: A dictionary suitable for use with the find_best_match_v2 function.
     """
-    # Normalize the user input for comparison
-    normalized_user_input = input_normalize_string(user_input)
+    ship_dictionary = {}
+    for ship in fleet.ships:
+        name_variants = [
+            ship.name,                     # Original
+            ship.name.replace(" ", ""),    # Without spaces
+            ship.name.lower(),             # Lowercase
+            ship.name.replace(" ", "").lower() # Lowercase without spaces
+        ]
+        # Add all variants to the dictionary pointing to the original ship name
+        ship_dictionary[ship.name] = list(set(name_variants))  # Remove duplicates
+    return ship_dictionary
 
-    # Find unique words from the list of possible commands
-    unique_words = find_unique_words(possible_commands)
 
-    # Initialize variables to store the best unique word match and its Levenshtein distance ratio
-    best_unique_word = None
-    max_unique_word_ratio = -1
 
-    # Check if the user input contains or nearly matches any unique word
-    for word in normalized_user_input.split():
-        if word in unique_words:
-            return next(command for command in possible_commands if word in command.split())
 
-        # Check for near-matches with unique words
-        for unique_word in unique_words:
-            ratio = levenshtein_ratio(word, unique_word)
-            if ratio > max_unique_word_ratio:
-                max_unique_word_ratio = ratio
-                best_unique_word = unique_word
-
-    # Check for unique words that are substrings of words in the user input
-    for unique_word in unique_words:
-        for word in normalized_user_input.split():
-            if unique_word in word or word in unique_word:
-                return next(command for command in possible_commands if unique_word in command.split())
-
-    # If a near-match with a unique word is found, return the corresponding command
-    if max_unique_word_ratio > 0.85:
-        return next(command for command in possible_commands if best_unique_word in command.split())
-
-    # Initialize variables to store the best match and its Levenshtein distance ratio
-    max_ratio = -1
-    best_match = None
-
-    # Loop through each possible command to find the best match
-    for command in possible_commands:
-        # Normalize the possible command for comparison
-        normalized_command = input_normalize_string(command)
-
-        # Calculate the Levenshtein distance ratio between the normalized user input and the possible command
-        ratio = levenshtein_ratio(normalized_user_input, normalized_command)
-
-        # Update the best match and its ratio if the current ratio is higher
-        if ratio > max_ratio:
-            max_ratio = ratio
-            best_match = command
-
-    # A threshold is set for the Levenshtein distance ratio to consider a match as reasonable
-    if max_ratio > 0.6:
-        return best_match
-    else:
-        return None
 
 
 # Managing Game Map and other Settings:
@@ -624,184 +582,98 @@ class Fleet:
         """
         Initialize an empty Fleet object.
         Variables:
-            ships (List[Ship]):
-             A list to store the Ship objects that belong to this fleet.
+            ships (List[Ship]): A list to store the Ship objects that belong to this fleet.
         """
-        self.ships: List[Ship] = []
+        self.ships = []
 
     def add_ship(self, ship):
         """
         Add a Ship object to the fleet.
         Parameters:
-            ship (Ship): The Ships object to be added to the fleet.
+            ship (Ship): The Ship object to be added to the fleet.
         """
         self.ships.append(ship)
 
-    def remove_ship(self, name):
+    def remove_ships_by_name(self, name):
         """
-        Remove one instance of a ship by its name from the fleet.
+        Remove all instances of ships with a given name from the fleet.
+
         Parameters:
-            name (str): The name of the ship to be removed.
+            name (str): The name of the ships to be removed.
+
         Returns:
-            bool: True if the ship was successfully removed, False otherwise.
+            int: The number of ships that were removed.
         """
-        for i, ship in enumerate(self.ships):
-            if ship.name == name:
-                del self.ships[i]
-                return True
-        return False
+        initial_ship_count = len(self.ships)
+        self.ships = [ship for ship in self.ships if ship.name != name]
+        removed_ship_count = initial_ship_count - len(self.ships)
+        return removed_ship_count
 
-    def get_ship(self, name, is_deployed):
+    def get_ship(self, name, is_deployed=False):
         """
-        Retrieve a Ship object from the fleet by its name and deployment
-        status.
-
+        Retrieve a Ship object from the fleet by its name and deployment status.
         Parameters:
             name (str): The name of the ship to retrieve.
-            is_deployed (bool): Whether to retrieve a deployed or not deployed
-                ship. Defaults to False, which retrieves not deployed ships.
-
+            is_deployed (bool): Whether to retrieve a deployed ship (default False).
         Returns:
-            Ship or None: Returns the Ship object if found; returns None if
-            not found.
+            Ship or None: The Ship object if found; None if not found.
         """
         for ship in self.ships:
             if ship.name == name and ship.deployed == is_deployed:
                 return ship
         return None
 
-    def get_ship_quantity(self, name):
+    def get_ship_quantity(self, name, is_sunk=None, is_deployed=None):
         """
-        Get the quantity of a specific type of ship in the fleet.
+        Get the quantity of a specific type of ship in the fleet, with optional
+        filters for sunk and deployed status.
         Parameters:
-            name (str): The name of the type of ship to count.
+            name (str): The name of the ship to count.
+            is_sunk (bool): If specified, filter ships by sunk status.
+            is_deployed (bool): If specified, filter ships by deployed status.
         Returns:
-            int: The number of ships of this type in the fleet.
+            int: The number of ships of the specified type and status.
         """
-        count = 0
-        for ship in self.ships:
-            if ship.name == name:
-                count += 1
-        return count
+        return sum(
+            ship.name == name and
+            (is_sunk is None or ship.sunk == is_sunk) and
+            (is_deployed is None or ship.deployed == is_deployed)
+            for ship in self.ships
+        )
 
-    def get_ship_quantity_by_sunk_status(self, name, is_sunk):
+    def get_biggest_ship_by_deployed_status(self, is_deployed=False):
         """
-        Get the quantity of a specific type of ship in the fleet based on
-        its sunk status.
-
+        Get the biggest ship in the fleet based on deployed status.
         Parameters:
-            name (str): The name of the type of ship to count.
-            is_sunk (bool, optional): Whether to count ships that are sunk.
-                Default is False, which counts not-sunk ships.
-
+            is_deployed (bool): Whether to consider deployed ships (default False).
         Returns:
-            int: The number of ships of this type in the fleet based on
-                sunk status.
+            Ship or None: The biggest ship object if found; None otherwise.
         """
-        count = 0
-        for ship in self.ships:
-            if ship.name == name and ship.sunk == is_sunk:
-                count += 1
-        return count
-
-    def get_ship_quantity_by_deployed_status(self, name, is_deployed):
-        """
-        Get the quantity of a specific type of ship in the fleet based on
-        its deployed status.
-
-        Parameters:
-            name (str): The name of the type of ship to count.
-            is_deployed (bool, optional): Whether to count ships that are
-                deployed. Default is False, which counts not-deployed ships.
-
-        Returns:
-            int: The number of ships of this type in the fleet based on
-                deployed status.
-        """
-        count = 0
-        for ship in self.ships:
-            if ship.name == name and ship.deployed == is_deployed:
-                count += 1
-        return count
-
-    def get_biggest_ship_by_deployed_status(self, is_deployed):
-        """
-        Get the biggest ship in the fleet based on the deployed status.
-
-        Parameters:
-            is_deployed (bool, optional): Whether to consider deployed ships.
-                Default is False, which considers not-deployed ships.
-
-        Returns:
-            Union[Ship, None]: Returns the biggest deployed ship object if
-            found;
-            returns None if no deployed ships are found.
-
-        This function iterates through the ships in the fleet, considering only
-        the deployed or not-deployed ships based on the `is_deployed`
-        parameter.
-        It calculates the size of each ship and keeps track of the biggest one.
-        If a deployed ship is found, it returns the entire Ship object;
-        otherwise, it returns None.
-        """
-        biggest_ship = None
-        biggest_size = 0
-
-        for ship in self.ships:
-            if ship.deployed == is_deployed and ship.size > biggest_size:
-                biggest_ship = ship
-                biggest_size = ship.size
-
-        return biggest_ship
+        return max(
+            (ship for ship in self.ships if ship.deployed == is_deployed),
+            key=lambda x: x.size,
+            default=None
+        )
 
     def __str__(self):
         """
         Provide a string representation of the Fleet object.
-
-        This method iterates through all the Ship objects in the fleet,
-        enumerating them and displaying key attributes like name, size,
-        coordinates, sunk status, and deployment status.
-
         Returns:
             str: A string representation summarizing the fleet's status.
         """
-
-        # Initialize an output string with a title.
-        output = "Fleet Status:\n"
-
-        # Loop through each Ship object in the fleet.
-        # The enumerate function provides an index starting from 1 for each
-        # ship.
-        for i, ship in enumerate(self.ships, 1):
-            # Append the index, name, and size of each ship to the output
-            # string.
-            output += f"{i}. {ship.name} (Size: {ship.size})\n"
-
-            # Append the coordinates of each ship to the output string.
-            output += f"   Coordinates: {ship.cell_coordinates}\n"
-
-            # Check the sunk status of the ship and append it to the output
-            # string.
-            output += f"   Sunk: {'Yes' if ship.sunk else 'No'}\n"
-
-            # Check the deployment status of the ship and append it to the
-            # output string.
-            output += f"   Deployed: {'Yes' if ship.deployed else 'No'}\n"
-
-        # Return the fully constructed output string.
-        return output
-
-    def __init__(self):
-        # Initialize your ships attribute here, for example
-        self.ships = []
+        return "\n".join(
+            f"{i+1}. {ship.name} (Size: {ship.size})\n"
+            f"   Coordinates: {ship.cell_coordinates}\n"
+            f"   Sunk: {'Yes' if ship.sunk else 'No'}\n"
+            f"   Deployed: {'Yes' if ship.deployed else 'No'}"
+            for i, ship in enumerate(self.ships)
+        )
 
     def gather_basic_info(self):
         """
-        Gather basic information about each ship in the fleet.
-
+        Gather basic information about each ship in the fleet and sort by size.
         Returns:
-            List[dict]: A list of dictionaries containing basic information
-            about each ship.
+            List[dict]: A sorted list of dictionaries containing basic information about each ship.
         """
         ship_info = {}
         for ship in self.ships:
@@ -809,146 +681,133 @@ class Fleet:
             if name not in ship_info:
                 ship_info[name] = {"name": name, "size": ship.size, "qty": 0}
             ship_info[name]["qty"] += 1
-        return [info for info in ship_info.values()]
 
-    def add_deployed_qty(self, ship_info_list):
+        # Convert the dictionary to a list and sort by ship size, descending
+        ship_info_list = list(ship_info.values())
+        ship_info_list.sort(key=lambda x: x['size'], reverse=True)
+
+        return ship_info_list
+
+
+    def apply_conditions_to_info(self, ship_info_list, conditions, game_settings):
         """
-        Add the quantity of deployed ships to the ship information list.
-
+        Apply conditions to the ship information list.
         Parameters:
             ship_info_list (List[dict]): The list containing ship information.
+            conditions (List[str]): The list of conditions to apply.
+            game_settings (GameSettings): The game's coordinate style.
         """
-        for info in ship_info_list:
-            info['deployed_qty'] = sum(ship.deployed for ship in self.ships if
-                                       ship.name == info['name'])
+        for condition in conditions:
+            if condition == 'deployed_qty':
+                self.add_quantity_condition(ship_info_list, 'deployed')
+            elif condition == 'sunk_qty':
+                self.add_quantity_condition(ship_info_list, 'sunk')
+            elif 'coordinates' in condition:
+                self.add_coordinates_condition(ship_info_list, condition, game_settings)
 
-    def add_sunk_qty(self, ship_info_list):
+    def add_quantity_condition(self, ship_info_list, status_type):
         """
-        Add the quantity of sunk ships to the ship information list.
-
+        Add the quantity of ships with a specific status (deployed/sunk) to the ship information list.
         Parameters:
             ship_info_list (List[dict]): The list containing ship information.
+            status_type (str): The status type to filter by ('deployed' or 'sunk').
         """
         for info in ship_info_list:
-            info['sunk_qty'] = sum(
-                ship.sunk for ship in self.ships if ship.name == info['name'])
+            info[f"{status_type}_qty"] = self.get_ship_quantity(
+                name=info['name'],
+                is_sunk=True if status_type == 'sunk' else None,
+                is_deployed=True if status_type == 'deployed' else None
+            )
 
-    def format_coordinates(self, coordinates, game_map_settings):
-        """
-        Format the coordinates according to the game's coordinate style.
-
-        Parameters:
-            coordinates (List[tuple]): List of coordinates.
-            game_map_settings (List): The game's map style.
-
-        Returns:
-            List[str]: List of formatted coordinates.
-        """
-        formatted_coordinates = []
-        for coord_set in coordinates:
-            formatted_set = []
-            for (row, col) in coord_set:
-                row_label = game_map_settings[5][0][row]
-                col_label = game_map_settings[5][1][col]
-                if game_map_settings[4] == ["Row", "Column"]:
-                    formatted_set.append(f"({row_label},{col_label})")
-                else:
-                    formatted_set.append(f"({col_label},{row_label})")
-            formatted_coordinates.append(' '.join(formatted_set))
-        return formatted_coordinates
-
-    def add_coordinates_condition(self, ship_info_list, condition,
-                                  game_settings):
+    def add_coordinates_condition(self, ship_info_list, condition, game_settings):
         """
         Add coordinates condition to the ship information list.
-
         Parameters:
             ship_info_list (List[dict]): The list containing ship information.
             condition (str): The condition to filter the coordinates.
-            game_settings (List): The game's coordinate style.
+            game_settings (GameSettings): The game's coordinate style.
         """
+        status_type = condition.replace('_coordinates', '')
         for info in ship_info_list:
-            coordinates = [ship.cell_coordinates for ship in self.ships if
-                           ship.name == info['name'] and
-                           getattr(ship, condition.split('_')[0])]
-            info[condition] = self.format_coordinates(coordinates,
-                                                      game_settings)
+            ships = [ship for ship in self.ships if ship.name == info['name']]
+            if status_type:
+                ships = [ship for ship in ships if getattr(ship, status_type)]
+            coordinates = [ship.cell_coordinates for ship in ships]
+            info[condition] = self.format_coordinates(coordinates, game_settings)
 
-    def print_fleet(self, conditions="", game_map_settings=None):
+    def format_coordinates(self, coordinates, game_settings):
         """
-        Print the fleet information based on given conditions.
-
+        Format the coordinates according to the game's coordinate style.
         Parameters:
-            conditions (List[str], optional): List of conditions to filter
-            the information.
-            game_map_settings (List, optional): The game's coordinate style.
+            coordinates (List[tuple]): List of coordinates.
+            game_settings (GameSettings): The game's map settings.
+        Returns:
+            List[str]: List of formatted coordinates.
+        """
+        # Implement coordinate formatting based on game settings.
+        # This code assumes that 'game_settings' provides the necessary properties and methods.
+        return game_settings.format_coordinates(coordinates)
+
+    def fleet_to_table(self, game_settings, conditions):
+        """
+        Generate and return a table representation of the fleet information based on game settings and conditions.
+        Parameters:
+            game_settings (GameSettings): The game settings to use for formatting.
+            conditions (List[str]): The list of conditions applied.
+        Returns:
+            List[List[Any]]: The table of ship information.
         """
         ship_info_list = self.gather_basic_info()
+        self.apply_conditions_to_info(ship_info_list, conditions, game_settings)
+        return self.convert_info_to_table(ship_info_list, conditions)
 
-        # Map conditions to corresponding functions
-        condition_func_map: dict[str, Callable] = {
-            'deployed_qty': self.add_deployed_qty,
-            'sunk_qty': self.add_sunk_qty,
-            'deployed_coordinates': lambda ship_info:
-            self.add_coordinates_condition(ship_info, 'deployed_coordinates',
-                                           game_map_settings),
-            'sunk_coordinates': lambda ship_info:
-            self.add_coordinates_condition(ship_info, 'sunk_coordinates',
-                                           game_map_settings)
-        }
-
-        # Apply each condition function to ship_info_list
-        for condition in conditions:
-            func = condition_func_map.get(condition)
-            if func:
-                func(ship_info_list)
-
-        # Print the table header
-        print("{:<20}{:<10}{:<10}".format("Name", "Size", "Qty"), end="")
-        for condition in conditions:
-            if condition == 'deployed_qty':
-                header = 'Deployed QTY'
-            elif condition == 'sunk_qty':
-                header = 'Sunk QTY'
-            else:
-                header = condition.split('_')[1][:3].upper()
-
-            print(f"{header:<10}", end="")
-        print()
-
-        # Print the ship information
-        for info in ship_info_list:
-            print(f"{info['name']:<20}{info['size']:<10}{info['qty']:<10}",
-                  end="")
-            for condition in conditions:
-                if 'coordinates' not in condition:
-                    print(f"{info.get(condition, 0):<10}", end="")
-            print()
-
-            self.fleet_print_coordinates(conditions, info)
-
-    def fleet_print_coordinates(self, conditions, info):
+    def convert_info_to_table(self, ship_info_list, conditions):
         """
-        Print the coordinates for each ship based on the given conditions.
+        Convert ship information list to a table format.
+        Parameters:
+            ship_info_list (List[dict]): The list containing ship information.
+            conditions (List[str]): The list of conditions applied.
+        Returns:
+            List[List[Any]]: The table of ship information.
+        """
+        header = ["Name", "Size", "Qty"]
+        header.extend(condition.replace('_', ' ').title() for condition in conditions)
+        table = [header]
+        for info in ship_info_list:
+            row = [info['name'], info['size'], info['qty']]
+            row.extend(info.get(condition, '') for condition in conditions)
+            table.append(row)
+        return table
+
+
+
+    def add_new_ship(self, base_name, size, quantity):
+        """
+        Add a specified number of new ships to the fleet with a given base name and size.
 
         Parameters:
-            conditions (List[str]): List of conditions to filter the
-            information. Expected to contain 'deployed_coordinates' and/or
-            'sunk_coordinates'.
-            info (Dict[str, any]): Dictionary containing ship information
-            including 'deployed_coordinates' and 'sunk_coordinates' if they
-            exist.
+            base_name (str): The base name for the new ships.
+            size (int): The size of the new ships.
+            quantity (int): The quantity of new ships to be added.
 
-        This function is intended to be called within `print_fleet` after
-        printing the basic ship information. It prints the coordinates for
-        each ship that match the specified conditions in the `conditions`
-        list. The coordinates are printed as additional lines below each
-        ship's basic information.
+        Note:
+            This method does not append an index to the ship's name. If the base name
+            already exists, it will simply add another ship with the same name.
+
+        Returns:
+            list: A list of the successfully added Ship objects.
         """
-        for condition in conditions:
-            if 'coordinates' in condition:
-                for coord_str in info.get(condition, []):
-                    print(f"    {coord_str}")
+        added_ships = []
+        for _ in range(quantity):
+            # Create the new Ship object and add it to the fleet
+            new_ship = Ship(name=base_name, size=size)
+            self.add_ship(new_ship)
+            added_ships.append(new_ship)
+
+        print(f"{quantity} ships named '{base_name}' added to the fleet.")
+        return added_ships
+
+
 
 
 
@@ -1134,7 +993,7 @@ def print_map_and_list(map_left, list_text, label_left, label_instructions,
         list_text: A list of strings representing the instructions.
         label_left: Label for the map.
         label_instructions: Label for the instructions.
-        game_map_settings: Game map settings including row and column index
+        game_settings: Game map settings including row and column index
         labels.
         gap: Number of blank spaces between the map and instructions.
         Default is 10.
@@ -1211,7 +1070,7 @@ def print_map_and_table(map_left, table, label_left, label_table,
         table: A 2D list representing the table. The first row contains headers.
         label_left: Label for the map.
         label_table: Label for the table.
-        game_map_settings: Game map settings including row and column index
+        game_settings: Game map settings including row and column index
         labels.
         gap: Number of blank spaces between the map and table. Default is 10.
     """
@@ -1826,13 +1685,16 @@ def game_change_settings(game_settings, default_fleet):
             if len(user_input) == 1:
                 if user_input == "0":
                     return game_settings, default_fleet
-                print(user_input)
-                if user_input.upper() == "M":
+                elif user_input.upper() == "M":
                     game_settings, default_fleet = settings_map_size_change(
                         game_settings, default_fleet)
-                if user_input.upper() == "S":
+                elif user_input.upper() == "S":
                     game_settings, default_fleet = settings_coordinates(
                         game_settings, default_fleet)
+                elif user_input.upper() == "F":
+                    game_settings, default_fleet = settings_fleet(game_settings, default_fleet)
+
+
 
             else:
                 user_command_input(game_settings, default_fleet, user_input)
@@ -1852,15 +1714,15 @@ def game_change_settings(game_settings, default_fleet):
 
 
 
-def user_command_input(game_map_settings, default_fleet, user_input):
+def user_command_input(game_settings, default_fleet, user_input):
 
     while True:
         user_command = find_best_match(user_input.lower(), DICTIONARY_COMMANDS)
         clear_terminal()
-        tmp_map = tmp_ships_on_map(default_fleet, game_map_settings.height,
-                                   game_map_settings.width,
-                                   game_map_settings.gaps,
-                                   game_map_settings.symbol)
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width,
+                                   game_settings.gaps,
+                                   game_settings.symbol)
         if user_command == None:
             user_input_list = ["I am sorry but i did not understand",
                                "what You wanted to say", "",
@@ -1879,17 +1741,17 @@ def user_command_input(game_map_settings, default_fleet, user_input):
                                "type 0 to go back"]
 
         print_map_and_list(tmp_map, user_input_list, "Ships on Map",
-                           "User Command", game_map_settings.row_labels,
-                           game_map_settings.col_labels, 5)
+                           "User Command", game_settings.row_labels,
+                           game_settings.col_labels, 5)
 
         try:
             user_input = input()
             if user_input.strip() == "":
-                execute_user_command(user_command, game_map_settings,
+                execute_user_command(user_command, game_settings,
                                      default_fleet)
             if len(user_input) == 1:
                 if user_input == 0:
-                    return game_map_settings, default_fleet
+                    return game_settings, default_fleet
                 print(user_input)
 
 
@@ -2263,12 +2125,12 @@ def settings_map_size_change(game_settings, default_fleet):
                             text_list.extend(add_text_list)
                 elif check_fit:
                     #now will apply new height and width to
-                    # tmp_game_map_settings, so it will regenerate labels if
+                    # tmp_game_settings, so it will regenerate labels if
                     # map
                     # check if map is bigger, if so create new labels
                     tmp_map = create_map(split_input[0],split_input[1],
                                          game_settings.symbol)
-                    tmp_fleet = create_fleet()
+                    tmp_fleet = create_fleet(default_fleet)
                     tmp_map_game = check_fleet_fits_map(tmp_map, tmp_fleet,
                                                         tmp_game_settings.symbol,
                                                         tmp_game_settings.gaps)
@@ -2302,6 +2164,309 @@ def settings_map_size_change(game_settings, default_fleet):
             print("Game adjustment interrupted.")
             return False
 
+
+def settings_fleet(game_settings, default_fleet):
+    text_list = [["    Add ship - type A"],["    Modify Ship - type M"],
+                 ["    Delete ship - type D"],["    Return to previous Menu - "
+                                               "type 0"]]
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width,
+                                   game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+
+            fleet_table = default_fleet.fleet_to_table(game_settings,
+                                                       [])
+            fleet_table.extend(text_list)
+            print_map_and_table(tmp_map, fleet_table, "Ships On Map",
+                                "Fleet", game_settings.row_labels, game_settings.col_labels, game_settings.maps_gap)
+
+
+            user_input = input()
+            if len(user_input) == 1:
+                if user_input == "0":
+                    return game_settings, default_fleet
+                elif user_input.upper() == "A":
+                    game_settings, default_fleet = settings_fleet_add_ship(game_settings, default_fleet)
+                elif user_input.upper() == "M":
+                    print("Modify ship")
+                elif user_input.upper() == "D":
+                    game_settings, default_fleet = settings_fleet_delete_ship(
+                        game_settings, default_fleet)
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
+
+
+
+def settings_fleet_delete_ship(game_settings, default_fleet):
+    fleet_table = default_fleet.fleet_to_table(game_settings,
+                                               [])
+    text_list = [["To Delete ship type in ship name"],
+                 ["Or type in ship index number:"],
+                 [f'Egzample 1 - {fleet_table[1][0]}'],
+                 ["Return to previous menu type - 0"]]
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width,
+                                   game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+
+            fleet_table = default_fleet.fleet_to_table(game_settings,
+                                                       [])
+            fleet_index = len(fleet_table)
+            fleet_table.extend(text_list)
+            print_map_and_table(tmp_map, fleet_table, "Ships On Map",
+                                " Delete ship from Fleet",
+                                game_settings.row_labels, game_settings.col_labels, game_settings.maps_gap)
+
+
+
+            user_input = input()
+            if len(user_input) >0:
+                if user_input.isdigit():
+                    if user_input == "0":
+                        return game_settings, default_fleet
+
+                    elif 1 <= int(user_input) <= int(fleet_index):
+                        ship_name = fleet_table[int(user_input)][0]
+                        ship_size = fleet_table[int(user_input)][1]
+                        ship_qty = fleet_table[int(user_input)][2]
+                        default_fleet.remove_ships_by_name(ship_name)
+                        text_list = [["You have removed ship:"],
+                                     [ship_name, ship_size, ship_qty],[""],
+                                     ["Return to previous menu type - 0"]]
+
+                    else:
+                        text_list = [[f'You have entered {user_input}'],
+                                     ["There is no ship with such index"]]
+
+                else:
+                    if user_input.upper() == "Y":
+                        default_fleet.remove_ships_by_name(ship_name[0])
+                        text_list = [["You have removed ship:"],
+                             [ship_name, ship_size, ship_qty],[""],
+                             ["Return to previous menu type - 0"]]
+                    else:
+
+
+                        ship_dictionary = create_ship_dictionary_from_fleet(default_fleet)
+
+                        ship_name = find_best_match(user_input, ship_dictionary)
+
+                        if ship_name is not None:
+                            ship_test = default_fleet.get_ship(ship_name[0])
+                            ship_size = ship_test.size
+                            ship_qty = default_fleet.get_ship_quantity(
+                                ship_name[0])
+                            text_list = [["You have selcted to delete:"],
+                                         [ship_name[0], ship_size, ship_qty],
+                                         ["To delete it type Y"],
+                                         ["Return to previous menu type - 0"]]
+
+                        else:
+                            text_list = [["Sorry I did not understand your "
+                                          "input"],
+                                         ["Please try again typing ship name"],
+                                         [""],
+                                         ["Return to previous menu type - 0"]]
+
+
+
+            else:
+                fleet_table = default_fleet.fleet_to_table(game_settings,
+                                                           [])
+                text_list = [["To Delete ship type in ship name"],
+                             ["Or type in ship index number:"],
+                             [f'Egzample 1 - {fleet_table[1][0]}'],
+                             ["Return to previous menu type - 0"]]
+
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
+
+
+
+def settings_fleet_change_ship(game_settings, default_fleet):
+    fleet_table = default_fleet.fleet_to_table(game_settings,
+                                               [])
+    text_list = [["To Delete ship type in ship name"],
+                 ["Or type in ship index number:"],
+                 [f'Egzample 1 - {fleet_table[1][0]}'],
+                 ["Return to previous menu type - 0"]]
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width,
+                                   game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+
+            fleet_table = default_fleet.fleet_to_table(game_settings,
+                                                       [])
+            fleet_index = len(fleet_table)
+            fleet_table.extend(text_list)
+            print_map_and_table(tmp_map, fleet_table, "Ships On Map",
+                                " Delete ship from Fleet",
+                                game_settings.row_labels, game_settings.col_labels, game_settings.maps_gap)
+
+
+
+            user_input = input()
+            if len(user_input) >0:
+                if user_input.isdigit():
+                    if user_input == "0":
+                        return game_settings, default_fleet
+
+                    elif 1 <= int(user_input) <= int(fleet_index):
+                        ship_name = fleet_table[int(user_input)][0]
+                        ship_size = fleet_table[int(user_input)][1]
+                        ship_qty = fleet_table[int(user_input)][2]
+                        text_list = [["You have removed ship:"],
+                                     [ship_name, ship_size, ship_qty],[""],
+                                     ["Return to previous menu type - 0"]]
+
+                    else:
+                        text_list = [[f'You have entered {user_input}'],
+                                     ["There is no ship with such index"]]
+
+                else:
+                    if user_input.upper() == "Y":
+                        default_fleet.remove_ships_by_name(ship_name[0])
+                        text_list = [["You have removed ship:"],
+                                     [ship_name, ship_size, ship_qty],[""],
+                                     ["Return to previous menu type - 0"]]
+                    else:
+
+
+                        ship_dictionary = create_ship_dictionary_from_fleet(default_fleet)
+
+                        ship_name = find_best_match(user_input, ship_dictionary)
+
+                        if ship_name is not None:
+                            ship_test = default_fleet.get_ship(ship_name[0])
+                            ship_size = ship_test.size
+                            ship_qty = default_fleet.get_ship_quantity(
+                                ship_name[0])
+                            text_list = [["You have selcted to delete:"],
+                                         [ship_name[0], ship_size, ship_qty],
+                                         ["To delete it type Y"],
+                                         ["Return to previous menu type - 0"]]
+
+                        else:
+                            text_list = [["Sorry I did not understand your "
+                                          "input"],
+                                         ["Please try again typing ship name"],
+                                         [""],
+                                         ["Return to previous menu type - 0"]]
+
+
+
+            else:
+                fleet_table = default_fleet.fleet_to_table(game_settings,
+                                                           [])
+                text_list = [["To Delete ship type in ship name"],
+                             ["Or type in ship index number:"],
+                             [f'Egzample 1 - {fleet_table[1][0]}'],
+                             ["Return to previous menu type - 0"]]
+
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
+
+
+def settings_fleet_add_ship(game_settings, default_fleet):
+    text_list = [["Type ship name, size and quantity"],
+                 ["Egzample: Tugboat,1,4"], ["To go back type 0"]]
+    while True:
+        clear_terminal()
+        tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                   game_settings.width,
+                                   game_settings.gaps,
+                                   game_settings.symbol)
+        try:
+
+            fleet_table = default_fleet.fleet_to_table(game_settings,
+                                                       [])
+            fleet_table.extend(text_list)
+            print_map_and_table(tmp_map, fleet_table, "Ships On Map",
+                                " Add Ship to Fleet",
+                                game_settings.row_labels, game_settings.col_labels, game_settings.maps_gap)
+
+
+            user_input = input()
+            if len(user_input) > 0:
+                if user_input == "0":
+                    return game_settings, default_fleet
+                # checking if user has provided 3 values
+                input_valid, split_input, output_text = validate_user_input(
+                    user_input, 3)
+                if input_valid:
+                    #checking if ship name is unique to fleet:
+                    ship_name = split_input[0]
+                    ship_test = default_fleet.get_ship(ship_name)
+                    if not ship_test:
+                        # checking if last 2 values are integers
+                        ship_size = int(split_input[1])
+                        ship_qty = int(split_input[2])
+                        size_qty_string = ', '.join([str(ship_size),
+                                                     str(ship_qty)])
+                        input_valid, split_input, output_text = (
+                            validate_user_input(
+                                size_qty_string, 2, "integer"))
+                        if input_valid:
+
+                            # now all validation is done, we will check if
+                            # modified fleet will fit on map
+                            # generating temporary map and fleet
+                            test_map = create_map(game_settings.height,
+                                                  game_settings.width,
+                                                 game_settings.symbol)
+                            test_fleet = create_fleet(default_fleet)
+                            test_fleet.add_new_ship(ship_name, ship_size, ship_qty)
+                            result = check_fleet_fits_map(test_map,
+                                                        test_fleet,
+                                                          game_settings.symbol, game_settings.maps_gap)
+                            if not result:
+                                text_list = [["I do not recommend such ship:"],
+                                             [ship_name, ship_size, ship_qty],
+                                             ["Try smaller size or "
+                                              "quantity"], ["To go back type 0"]]
+                            else:
+                                default_fleet = create_fleet(test_fleet)
+
+
+
+                        else:
+                            text_list = []
+                            text_list.append(output_text)
+                    else:
+                        text_list.append([f'{split_input[0]} already exists '
+                                          f'in fleet'])
+
+
+
+
+
+                else:
+                    text_list.append(output_text)
+            else:
+                text_list = [["Type ship name, size and quantity"],
+                             ["Egzample: Tugboat,1,4"], ["To go back type 0"]]
+
+
+
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
 
 
 
@@ -2364,7 +2529,7 @@ def start_game():
         return False
 
     """print_map_and_list(map_cpu_display, LIST_INSTRUCTIONS, "Ships on Map",
-                       "Instructions", game_map_settings, 10)"""
+                       "Instructions", game_settings, 10)"""
 
     print_two_maps(map_cpu_display, map_cpu_display, "Hidden", "Display",
                    current_game_settings.row_labels,
