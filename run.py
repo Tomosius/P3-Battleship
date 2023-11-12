@@ -17,6 +17,8 @@ import string
 from io import StringIO
 import sys
 
+start_time = time.time()  # tamer will start with game
+
 
 
 # ANSI color codes used for visual representation of different ship statuses
@@ -292,6 +294,112 @@ def create_ship_dictionary_from_fleet(fleet):
 
 # Managing Game Map and other Settings:
 # -------------------------------------
+
+
+class BattleshipGameInfo:
+    """
+    A class to represent the game state in Battleship, tracking actions for both players and CPUs.
+
+    Attributes:
+        actions (list of dict): List of dictionaries storing details of each action.
+        timer (float): Time elapsed or remaining in the game.
+
+    Methods:
+        update_action(player_type, row, column, outcome): Updates the game state with the latest action.
+        get_latest_action_by_player_type(player_type): Retrieves the latest action for a specific player type.
+        start_timer(), update_timer(), stop_timer(): Timer management methods.
+        reset_game(): Resets the entire game state for a new game.
+    """
+
+    def __init__(self):
+        """
+        Constructs all the necessary attributes for the BattleshipGameInfo object.
+        """
+        self.actions = []  # List to store actions
+        self.timer = 0.0
+
+    def update_action(self, player_type, row, column, outcome):
+        """
+        Updates the game state with the latest action.
+
+        Args:
+            player_type (str): The type of the player ('cpu' or 'player').
+            row (int): The row number of the action.
+            column (int): The column number of the action.
+            outcome (str): Description of the action's outcome.
+        """
+        action = {
+            "player_type": player_type,
+            "row": row,
+            "column": column,
+            "outcome": outcome
+        }
+        self.actions.append(action)
+
+    def get_latest_action_by_player_type(self, player_type):
+        """
+        Retrieves the details of the latest action for a given player type.
+
+        Args:
+            player_type (str): The type of the player ('cpu' or 'player').
+
+        Returns:
+            str: A formatted string containing the details of the latest action for the specified player type.
+                 Returns a message if no action has been recorded for the player type.
+        """
+        for action in reversed(self.actions):
+            if action['player_type'] == player_type:
+                return (f"Time: {self.timer:.2f} seconds, "
+                        f"Player Type: {action['player_type']}, "
+                        f"Row: {action['row']}, Column: {action['column']}, "
+                        f"Outcome: {action['outcome']}")
+        return "No action has been recorded for this player type."
+
+    def start_timer(self):
+        """
+        Starts the game timer.
+        """
+        self.timer_start = time.time()
+
+    def update_timer(self):
+        """
+        Updates the timer with the elapsed time since the timer was started.
+        """
+        if hasattr(self, 'timer_start'):
+            self.timer = time.time() - self.timer_start
+        else:
+            print("Timer has not been started.")
+
+    def stop_timer(self):
+        """
+        Stops the timer and updates the timer attribute with the total time elapsed.
+        """
+        self.update_timer()
+        if hasattr(self, 'timer_start'):
+            del self.timer_start
+
+    def reset_game(self):
+        """
+        Resets the entire game state to its initial values.
+        This includes clearing the action logs and resetting the timer.
+        """
+        self.actions = []
+        self.timer = 0.0
+        if hasattr(self, 'timer_start'):
+            del self.timer_start
+
+    def __str__(self):
+        """
+        String representation of the current game state.
+
+        Returns:
+            str: Formatted game state information.
+        """
+        action_strings = [f"{action['player_type']} at Row: {action['row']}, Column: {action['column']} - {action['outcome']}"
+                          for action in self.actions]
+        actions_str = "\n".join(action_strings)
+        return (f"Timer: {self.timer:.2f} seconds\nActions:\n{actions_str}")
+
 
 class game_settings:
     """Class to hold default map settings for the Battleship game.
@@ -651,6 +759,21 @@ class Fleet:
         """
         return max(
             (ship for ship in self.ships if ship.deployed == is_deployed),
+            key=lambda x: x.size,
+            default=None
+        )
+
+    def get_biggest_ship_by_sunk_status(self, is_sunk=False):
+        """
+        Get the biggest ship in the fleet based on sunk status.
+        Parameters:
+            is_sunk (bool): Whether to consider sunk ships (default
+            False).
+        Returns:
+            Ship or None: The biggest ship object if found; None otherwise.
+        """
+        return max(
+            (ship for ship in self.ships if ship.sunk == is_sunk),
             key=lambda x: x.size,
             default=None
         )
@@ -2618,6 +2741,22 @@ def check_fleet_fits_map(map_game, fleet_config, symbol, gaps):
 
 
 
+""" CPU move functions
+----------------------"""
+
+def cpu_move(map_hidden,map_display,fleet, cpu_actions_log, game_settings):
+    #checking is there any recorded hit shots in log:
+    player_name = "CPU"
+    if len(cpu_actions_log) == 0:
+        ship_obj = fleet.get_biggest_ship_by_sunk_status(False)
+
+        if ship_obj is None:
+            print("Game Over")
+            return  map_hidden, map_display, fleet
+        else:
+            ship_size = ship_obj.size
+    else:
+        print("keep killing exsisting ship")
 
 
 
