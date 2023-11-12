@@ -804,7 +804,6 @@ class Fleet:
             self.add_ship(new_ship)
             added_ships.append(new_ship)
 
-        print(f"{quantity} ships named '{base_name}' added to the fleet.")
         return added_ships
 
 
@@ -1660,7 +1659,6 @@ def tmp_ships_on_map(fleet_config, height, width, gaps, symbol):
 
         # Check if all ships were successfully deployed
         if not tmp_map_game:
-            print("CPU cannot deploy all ships; they do not fit.")
             continue # continue till map is generated
         else:
             return tmp_map_game
@@ -2191,7 +2189,7 @@ def settings_fleet(game_settings, default_fleet):
                 elif user_input.upper() == "A":
                     game_settings, default_fleet = settings_fleet_add_ship(game_settings, default_fleet)
                 elif user_input.upper() == "M":
-                    print("Modify ship")
+                    game_settings, default_fleet = settings_fleet_change_ship(game_settings, default_fleet)
                 elif user_input.upper() == "D":
                     game_settings, default_fleet = settings_fleet_delete_ship(
                         game_settings, default_fleet)
@@ -2296,7 +2294,7 @@ def settings_fleet_delete_ship(game_settings, default_fleet):
 def settings_fleet_change_ship(game_settings, default_fleet):
     fleet_table = default_fleet.fleet_to_table(game_settings,
                                                [])
-    text_list = [["To Delete ship type in ship name"],
+    text_list = [["To Modify ship type in ship name"],
                  ["Or type in ship index number:"],
                  [f'Egzample 1 - {fleet_table[1][0]}'],
                  ["Return to previous menu type - 0"]]
@@ -2313,7 +2311,7 @@ def settings_fleet_change_ship(game_settings, default_fleet):
             fleet_index = len(fleet_table)
             fleet_table.extend(text_list)
             print_map_and_table(tmp_map, fleet_table, "Ships On Map",
-                                " Delete ship from Fleet",
+                                " Change Ship in Fleet",
                                 game_settings.row_labels, game_settings.col_labels, game_settings.maps_gap)
 
 
@@ -2326,11 +2324,13 @@ def settings_fleet_change_ship(game_settings, default_fleet):
 
                     elif 1 <= int(user_input) <= int(fleet_index):
                         ship_name = fleet_table[int(user_input)][0]
-                        ship_size = fleet_table[int(user_input)][1]
-                        ship_qty = fleet_table[int(user_input)][2]
-                        text_list = [["You have removed ship:"],
-                                     [ship_name, ship_size, ship_qty],[""],
-                                     ["Return to previous menu type - 0"]]
+                        game_settings, default_fleet = settings_fleet_change_selected_ship(game_settings,
+                                                            default_fleet,
+                                                            ship_name)
+
+
+
+
 
                     else:
                         text_list = [[f'You have entered {user_input}'],
@@ -2338,7 +2338,6 @@ def settings_fleet_change_ship(game_settings, default_fleet):
 
                 else:
                     if user_input.upper() == "Y":
-                        default_fleet.remove_ships_by_name(ship_name[0])
                         text_list = [["You have removed ship:"],
                                      [ship_name, ship_size, ship_qty],[""],
                                      ["Return to previous menu type - 0"]]
@@ -2356,7 +2355,7 @@ def settings_fleet_change_ship(game_settings, default_fleet):
                                 ship_name[0])
                             text_list = [["You have selcted to delete:"],
                                          [ship_name[0], ship_size, ship_qty],
-                                         ["To delete it type Y"],
+                                         ["To change it type Y"],
                                          ["Return to previous menu type - 0"]]
 
                         else:
@@ -2365,7 +2364,6 @@ def settings_fleet_change_ship(game_settings, default_fleet):
                                          ["Please try again typing ship name"],
                                          [""],
                                          ["Return to previous menu type - 0"]]
-
 
 
             else:
@@ -2380,6 +2378,131 @@ def settings_fleet_change_ship(game_settings, default_fleet):
         except KeyboardInterrupt:
             print("Game adjustment interrupted.")
             return False
+
+
+
+def settings_fleet_change_selected_ship(game_settings, default_fleet,
+                                        ship_name):
+    ship_info = default_fleet.get_ship(ship_name)
+    ship_size = ship_info.size
+    ship_qty = default_fleet.get_ship_quantity(ship_name)
+    text_list = [["To change ship Enter Values:"],[""],
+                 ["2 Values:"],["Size, QTY"],[""],
+                 ["3 Values:"],["New Name, Size, QTY"],[""],
+                 ["To go back type 0"]]
+    while True:
+        try:
+            fleet_table = [['Name', 'Size', 'Qty'],
+                           [ship_name, ship_size, ship_qty]]
+            fleet_table.extend(text_list)
+            clear_terminal()
+            tmp_map = tmp_ships_on_map(default_fleet, game_settings.height,
+                                       game_settings.width,
+                                       game_settings.gaps,
+                                       game_settings.symbol)
+            print_map_and_table(tmp_map, fleet_table, "Ships On Map",
+                                " Your selected Ship",
+                                game_settings.row_labels, game_settings.col_labels,
+                                game_settings.maps_gap)
+            user_input = input()
+            if user_input == "0":
+                return game_settings, default_fleet
+            else:
+                input_parts = re.split(r'[^A-Za-z0-9]+', user_input)
+
+                # now we shall check how many values user has used, if 2:
+                if len(input_parts) == 2:
+                    input_valid, split_input, output_text = (
+                        validate_user_input(
+                            user_input, 2, "integer"))
+                    if input_valid:
+                        # if both values are integers, we will test if given
+                        # ship modification in fleet will fit on map:
+                        new_ship_name = ship_name
+                        new_ship_size = split_input[0]
+                        new_ship_qty = split_input[1]
+                        test_map = create_map(game_settings.height,
+                                              game_settings.width,
+                                              game_settings.symbol)
+                        test_fleet = create_fleet(default_fleet)
+                        test_fleet.remove_ships_by_name(ship_name)
+                        test_fleet.add_new_ship(new_ship_name, new_ship_size,
+                                                new_ship_qty)
+                        result = check_fleet_fits_map(test_map,
+                                                      test_fleet,
+                                                      game_settings.symbol,
+                                                      game_settings.maps_gap)
+                        if not result:
+                            text_list = [[""],["I do not recommend such ship:"],
+                                         [new_ship_name, new_ship_size,
+                                          new_ship_qty],
+                                         ["Try smaller size or "
+                                          "quantity"], ["To go back type 0"]]
+                        else:
+                            default_fleet = create_fleet(test_fleet)
+                            return game_settings, default_fleet
+
+                    else:
+                        text_list = [""]
+                        text_list.append(output_text)
+                elif len(input_parts) == 3:
+                    new_ship_size = int(input_parts[1])
+                    new_ship_qty = int(input_parts[2])
+                    size_qty_string = ', '.join([str(new_ship_size),
+                                                 str(new_ship_qty)])
+                    new_ship_name = input_parts[0]
+                    input_valid, split_input, output_text = (
+                        validate_user_input(
+                            size_qty_string, 2, "integer"))
+                    if input_valid:
+                        # if both values are integers, we will test if given
+                        # ship modification in fleet will fit on map:
+                        new_ship_size = split_input[0]
+                        new_ship_qty = split_input[1]
+                        test_map = create_map(game_settings.height,
+                                              game_settings.width,
+                                              game_settings.symbol)
+                        test_fleet = create_fleet(default_fleet)
+                        test_fleet.remove_ships_by_name(ship_name)
+                        test_fleet.add_new_ship(new_ship_name, new_ship_size,
+                                                new_ship_qty)
+                        result = check_fleet_fits_map(test_map,
+                                                      test_fleet,
+                                                      game_settings.symbol,
+                                                      game_settings.maps_gap)
+                        if not result:
+                            text_list = [[""], ["I do not recommend such ship:"],
+                                         [new_ship_name, new_ship_size,
+                                          new_ship_qty],
+                                         ["Try smaller size or "
+                                          "quantity"], ["To go back type 0"]]
+                        else:
+                            default_fleet = create_fleet(test_fleet)
+                            return game_settings, default_fleet
+
+                    else:
+                        text_list = [""]
+                        text_list.append(output_text)
+                else:
+
+                    text_list = [["To change ship Enter Values:"],
+                                 ["2 Values:"], ["Size, QTY"],
+                                 ["3 Values:"], ["New Name, Size, QTY"], [""],
+                                 ["ERROR. You have entered:"],
+                                 [f'{len(input_parts)} number of values'],
+                                 ["To go back type 0"]]
+
+
+
+
+
+
+        except KeyboardInterrupt:
+            print("Game adjustment interrupted.")
+            return False
+
+
+
 
 
 def settings_fleet_add_ship(game_settings, default_fleet):
