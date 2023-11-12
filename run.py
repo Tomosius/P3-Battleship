@@ -1746,6 +1746,8 @@ def game_instructions():
                 current_game_settings, current_game_fleet \
                     =game_change_settings( current_game_settings,
                                            current_game_fleet)
+            else:
+                return current_game_settings, current_game_fleet
 
         except KeyboardInterrupt:
             clear_terminal()
@@ -2744,7 +2746,8 @@ def check_fleet_fits_map(map_game, fleet_config, symbol, gaps):
 """ CPU move functions
 ----------------------"""
 
-def cpu_move(map_hidden,map_display,fleet, cpu_actions_log, game_settings):
+def cpu_move(map_hidden, map_display,fleet, cpu_actions_log, game_settings,
+             game_log):
     #checking is there any recorded hit shots in log:
     player_name = "CPU"
     if len(cpu_actions_log) == 0:
@@ -2755,13 +2758,116 @@ def cpu_move(map_hidden,map_display,fleet, cpu_actions_log, game_settings):
             return  map_hidden, map_display, fleet
         else:
             ship_size = ship_obj.size
+
+
     else:
         print("keep killing exsisting ship")
 
 
+def cpu_find_biggest_ship_on_map(map_game, size, symbol):
+    """
+    Searches for the biggest ship on the map represented by a specific symbol.
+
+    Args:
+    map_game (list): The game map or grid.
+    size (int): The initial size parameter for the ship.
+    symbol (str): The symbol representing the ship.
+
+    Returns:
+    list: List of center coordinates of the largest ship found.
+    """
+    # Initialize an empty list for storing coordinates
+    coordinates_list = []
+
+    # Begin with the maximum possible size
+    width = size * 2 - 1
+    height = size * 2 - 1
+
+    # Main loop to find the biggest ship
+    while True:
+        coordinates_list = search_pattern(map_game, height, width, symbol)
+
+        # If coordinates are found, calculate their center and return
+        if coordinates_list:
+            return get_coordinates_center(height, width, coordinates_list)
+
+        # If not found, reduce the dimensions and search again
+        else:
+            width -= 1
+            coordinates_list = search_pattern(map_game, height, width, symbol)
+            if coordinates_list:
+                width_center_list = get_coordinates_center(height, width,
+                                                       coordinates_list)
+            else:
+                width_center_list = []
+
+            # Restore width and reduce height for the next search
+            width += 1
+            height -= 1
+            coordinates_list = search_pattern(map_game, height, width, symbol)
+            if coordinates_list:
+                height_center_list = get_coordinates_center(height, width,
+                                                        coordinates_list)
+            else:
+                height_center_list = []
+
+            # Combine results from width and height reductions
+            center_list = width_center_list + height_center_list
+
+            # Return if centers are found
+            if center_list:
+                return center_list
+            else:
+                width -=1 # reducing width, height is already reduced
+
+            # Check for minimum dimensions to avoid infinite loop
+            if width < size or height < size:
+                break
+
+    return []  # Return an empty list if no ship is found
 
 
+def get_coordinates_center(height, width, coordinates_list):
+    """
+    Calculates the center coordinates for a given height and width of a grid,
+    and applies this calculation to a list of coordinates.
 
+    Args:
+        height (int): The height of the grid.
+        width (int): The width of the grid.
+        coordinates_list (list of tuples): A list of coordinates (row, column).
+
+    Returns:
+        list of tuples: A list containing the center coordinates.
+    """
+    center_rows = calculate_center(height)
+    center_columns = calculate_center(width)
+
+    center_list = []
+    for coord_row, coord_column in coordinates_list:
+        for center_row in center_rows:
+            for center_column in center_columns:
+                final_row = coord_row + center_row
+                final_column = coord_column + center_column
+                center_list.append((final_row, final_column))
+
+            return center_list
+
+
+def calculate_center(dimension):
+    """
+    Calculates the center points for a given dimension.
+
+    Args:
+        dimension (int): The dimension of the grid (either height or width).
+    Returns:
+        list: A list of center point(s).
+    """
+
+    if dimension % 2 == 1:
+        return [dimension // 2]
+    else:
+        return [dimension // 2 - 1, dimension // 2]
 
 
 """Initial game start functions
@@ -2773,31 +2879,11 @@ def start_game():
     # print_acid_effect()
 
     # create game map settings just for current game session
-    global DEFAULT_MAP_SETTINGS
-    current_game_settings = game_settings()
+    game_settings, default_fleet = game_instructions()
+    game_log = BattleshipGameInfo()
 
-    game_fleet_settings = create_fleet()
-
-    map_cpu_display = create_map(current_game_settings.height,
-                                 current_game_settings.width,
-                                 current_game_settings.symbol)
-
-    map_cpu_display = cpu_deploy_all_ships(map_cpu_display,
-                                           game_fleet_settings,
-                                           current_game_settings.gaps,
-                                           current_game_settings.symbol)
-    if not map_cpu_display:
-        print(" cpu can not deploy all ships, do not fit")
-        return False
-
-    """print_map_and_list(map_cpu_display, LIST_INSTRUCTIONS, "Ships on Map",
-                       "Instructions", game_settings, 10)"""
-
-    print_two_maps(map_cpu_display, map_cpu_display, "Hidden", "Display",
-                   current_game_settings.row_labels,
-                   current_game_settings.col_labels,
-                   10)
+#start_game()
 
 
-game_instructions()
-
+def cpu_loop():
+    game_log = BattleshipGameInfo()
